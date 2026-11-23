@@ -1,0 +1,267 @@
+/* Easy NPC core — generated from src/shared/engine.ts by scripts/build-core.mjs. Do not edit. MIT. */
+// src/shared/types.ts
+var WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+// src/shared/engine.ts
+var DEFAULT_CLOCK = { dayStart: "06:00", nightStart: "19:00", secondsPerMinute: 1, speed: 3, firstWeekday: "mon" };
+function toMinutes(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
+  if (!m) return NaN;
+  const h = Number(m[1]);
+  const mm = Number(m[2]);
+  if (h > 23 || mm > 59) return NaN;
+  return h * 60 + mm;
+}
+var fmtTime = (minute) => {
+  const m = (Math.floor(minute) % 1440 + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+};
+var weekday = (clock, day) => WEEKDAYS[((WEEKDAYS.indexOf(clock.firstWeekday) + day) % 7 + 7) % 7];
+function isNight(clock, minute) {
+  const m = (minute % 1440 + 1440) % 1440;
+  const a = toMinutes(clock.dayStart);
+  const b = toMinutes(clock.nightStart);
+  return a < b ? m < a || m >= b : m >= b && m < a;
+}
+var walkable = (map, x, y) => x >= 0 && y >= 0 && x < map.width && y < map.height && map.collision[y]?.[x] !== "#";
+var DIRS = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+function nearestWalkable(map, x, y) {
+  if (walkable(map, x, y)) return [x, y];
+  const seen = /* @__PURE__ */ new Set([y * map.width + x]);
+  const q = [[x, y]];
+  for (let i = 0; i < q.length; i++) {
+    const [cx, cy] = q[i];
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
+      const k = ny * map.width + nx;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (walkable(map, nx, ny)) return [nx, ny];
+      q.push([nx, ny]);
+    }
+  }
+  return null;
+}
+function findPath(map, from, to) {
+  const W = map.width;
+  const [sx, sy] = from;
+  const [gx, gy] = to;
+  if (!walkable(map, sx, sy) || !walkable(map, gx, gy)) return [];
+  if (sx === gx && sy === gy) return [[sx, sy]];
+  const h = (x, y) => Math.abs(x - gx) + Math.abs(y - gy);
+  const g = /* @__PURE__ */ new Map([[sy * W + sx, 0]]);
+  const came = /* @__PURE__ */ new Map();
+  const closed = /* @__PURE__ */ new Set();
+  const open = [[h(sx, sy), h(sx, sy), 0, sy * W + sx]];
+  let seq = 1;
+  while (open.length) {
+    let bi = 0;
+    for (let i = 1; i < open.length; i++) {
+      const a = open[i];
+      const b = open[bi];
+      if (a[0] < b[0] || a[0] === b[0] && (a[1] < b[1] || a[1] === b[1] && a[2] < b[2])) bi = i;
+    }
+    const [, , , key] = open.splice(bi, 1)[0];
+    if (closed.has(key)) continue;
+    closed.add(key);
+    const cx = key % W;
+    const cy = Math.floor(key / W);
+    if (cx === gx && cy === gy) {
+      const path = [];
+      let k = key;
+      while (k !== void 0) {
+        path.push([k % W, Math.floor(k / W)]);
+        k = came.get(k);
+      }
+      return path.reverse();
+    }
+    const cg = g.get(key);
+    for (const [dx, dy] of DIRS) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (!walkable(map, nx, ny)) continue;
+      const nk = ny * W + nx;
+      if (closed.has(nk)) continue;
+      const ng = cg + 1;
+      if (ng < (g.get(nk) ?? Infinity)) {
+        g.set(nk, ng);
+        came.set(nk, key);
+        const nh = h(nx, ny);
+        open.push([ng + nh, nh, seq++, nk]);
+      }
+    }
+  }
+  return [];
+}
+var entryMatches = (e, wd, night) => (!e.days || e.days.includes(wd)) && (!e.when || e.when === "any" || e.when === "night" === night);
+function dayList(world, npc, day, night) {
+  const wd = weekday(world.clock, day);
+  return npc.schedule.map((e, i) => ({ e, i, t: toMinutes(e.at) })).filter((x) => entryMatches(x.e, wd, night)).sort((a, b) => a.t - b.t || a.i - b.i);
+}
+function activeEntry(world, npc, day, minute, night) {
+  const n = night ?? isNight(world.clock, minute);
+  const m = (minute % 1440 + 1440) % 1440;
+  const today = dayList(world, npc, day, n);
+  const started = today.filter((x) => x.t <= m);
+  if (started.length) {
+    const cur2 = started[started.length - 1];
+    const prev2 = started.length > 1 ? started[started.length - 2].e.place : dayList(world, npc, day - 1, n).pop()?.e.place ?? npc.home;
+    return { entry: cur2.e, index: cur2.i, start: cur2.t, from: prev2, elapsed: m - cur2.t };
+  }
+  const y = dayList(world, npc, day - 1, n);
+  const cur = y[y.length - 1];
+  if (!cur) return null;
+  const prev = (y[y.length - 2] ?? cur).e.place;
+  return { entry: cur.e, index: cur.i, start: cur.t, from: prev, elapsed: m + 1440 - cur.t };
+}
+function routePairs(world) {
+  const out = /* @__PURE__ */ new Map();
+  for (const npc of world.npcs)
+    for (let d = 0; d < 7; d++)
+      for (const n of [false, true]) {
+        const today = dayList(world, npc, d, n);
+        const y = dayList(world, npc, d - 1, n);
+        let prev = y.length ? y[y.length - 1].e.place : npc.home;
+        for (const x of today) {
+          out.set(routeKey(prev, x.e.place), [prev, x.e.place]);
+          prev = x.e.place;
+        }
+        if (y.length > 1) out.set(routeKey(y[y.length - 2].e.place, y[y.length - 1].e.place), [y[y.length - 2].e.place, y[y.length - 1].e.place]);
+      }
+  return [...out.values()].sort((a, b) => routeKey(...a).localeCompare(routeKey(...b)));
+}
+var routeKey = (a, b) => `${a}>${b}`;
+function placeTile(world, id) {
+  const p = world.places[id];
+  if (!p) return null;
+  return nearestWalkable(world.map, p.x, p.y);
+}
+function route(world, from, to) {
+  const pre = world.routes?.[routeKey(from, to)];
+  if (pre) return pre;
+  const a = placeTile(world, from);
+  const b = placeTile(world, to);
+  if (!a || !b) return [];
+  return findPath(world.map, a, b);
+}
+var facingOf = (dx, dy) => Math.abs(dx) >= Math.abs(dy) ? dx > 0 ? "right" : dx < 0 ? "left" : "front" : dy > 0 ? "front" : "back";
+function state(world, id, day, minute, night) {
+  const npc = world.npcs.find((n2) => n2.id === id);
+  if (!npc) return null;
+  const n = night ?? isNight(world.clock, minute);
+  const act = activeEntry(world, npc, day, minute, n);
+  const home = placeTile(world, npc.home) ?? [0, 0];
+  if (!act) return { id, x: home[0], y: home[1], facing: "front", moving: false, activity: "idle", place: npc.home, indoors: false, night: n, entry: -1, progress: 0, routeLength: 0 };
+  const path = route(world, act.from, act.entry.place);
+  const speed = npc.speed ?? world.clock.speed;
+  const len = Math.max(0, path.length - 1);
+  const walked = act.elapsed * speed;
+  if (!path.length) {
+    const t = placeTile(world, act.entry.place) ?? home;
+    return { id, x: t[0], y: t[1], facing: act.entry.facing ?? world.places[act.entry.place]?.facing ?? "front", moving: false, activity: act.entry.activity, place: act.entry.place, indoors: !!act.entry.indoors, night: n, entry: act.index, progress: 0, routeLength: 0 };
+  }
+  if (walked >= len) {
+    const [x, y] = path[path.length - 1];
+    const last = path.length > 1 ? path[path.length - 2] : path[0];
+    const face = act.entry.facing ?? world.places[act.entry.place]?.facing ?? (path.length > 1 ? facingOf(x - last[0], y - last[1]) : "front");
+    return { id, x, y, facing: face, moving: false, activity: act.entry.activity, place: act.entry.place, indoors: !!act.entry.indoors, night: n, entry: act.index, progress: len, routeLength: len };
+  }
+  const i = Math.floor(walked);
+  const f = walked - i;
+  const [ax, ay] = path[i];
+  const [bx, by] = path[i + 1];
+  return { id, x: ax + (bx - ax) * f, y: ay + (by - ay) * f, facing: facingOf(bx - ax, by - ay), moving: true, activity: "walk", place: act.entry.place, indoors: false, night: n, entry: act.index, progress: walked, routeLength: len };
+}
+var states = (world, day, minute, night) => world.npcs.map((n) => state(world, n.id, day, minute, night));
+var newBond = (npc) => ({ points: npc.affinity?.start ?? 0, lastTalk: -1, lastGift: -1 });
+var clampPts = (npc, p) => Math.max(0, Math.min(npc.affinity?.max ?? 100, p));
+var GIFT_POINTS = { loved: 8, liked: 4, neutral: 1, disliked: -4 };
+function giftKind(npc, item) {
+  const g = npc.affinity?.gifts ?? {};
+  if (g.loved?.includes(item)) return "loved";
+  if (g.liked?.includes(item)) return "liked";
+  if (g.disliked?.includes(item)) return "disliked";
+  return "neutral";
+}
+function talk(npc, b, day) {
+  if (b.lastTalk === day) return 0;
+  b.lastTalk = day;
+  const before = b.points;
+  b.points = clampPts(npc, b.points + (npc.affinity?.talk ?? 1));
+  return b.points - before;
+}
+function gift(npc, b, item, day) {
+  const kind = giftKind(npc, item);
+  if (b.lastGift === day) return { kind, delta: 0 };
+  b.lastGift = day;
+  const before = b.points;
+  b.points = clampPts(npc, b.points + GIFT_POINTS[kind]);
+  return { kind, delta: b.points - before };
+}
+function level(npc, points) {
+  const lv = [...npc.affinity?.levels ?? []].sort((a, b) => a.at - b.at);
+  let idx = -1;
+  lv.forEach((l2, i) => {
+    if (points >= l2.at) idx = i;
+  });
+  const l = lv[idx];
+  return { index: idx, at: l?.at ?? 0, name: l?.name ?? null, dialogue: l?.dialogue };
+}
+function dialogueFor(world, npc, b, day, minute, night) {
+  const act = activeEntry(world, npc, day, minute, night);
+  const st = state(world, npc.id, day, minute, night);
+  if (act?.entry.dialogue && st && !st.moving) return act.entry.dialogue;
+  const lv = level(npc, b.points);
+  return lv.dialogue ?? npc.dialogue ?? null;
+}
+function questsFor(npc, b, minute) {
+  const m = (minute % 1440 + 1440) % 1440;
+  return (npc.quests ?? []).filter((q) => b.points >= (q.minAffinity ?? 0)).filter((q) => {
+    const a = q.from ? toMinutes(q.from) : 0;
+    const z = q.to ? toMinutes(q.to) : 1440;
+    return a <= z ? m >= a && m < z : m >= a || m < z;
+  }).map((q) => q.quest);
+}
+function nearest(world, day, minute, x, y, radius = 1.5, night) {
+  let best = null;
+  let bd = Infinity;
+  for (const s of states(world, day, minute, night)) {
+    if (s.indoors) continue;
+    const d = Math.hypot(s.x - x, s.y - y);
+    if (d <= radius && d < bd) {
+      bd = d;
+      best = s;
+    }
+  }
+  return best;
+}
+export {
+  DEFAULT_CLOCK,
+  GIFT_POINTS,
+  activeEntry,
+  dayList,
+  dialogueFor,
+  entryMatches,
+  findPath,
+  fmtTime,
+  gift,
+  giftKind,
+  isNight,
+  level,
+  nearest,
+  nearestWalkable,
+  newBond,
+  placeTile,
+  questsFor,
+  route,
+  routeKey,
+  routePairs,
+  state,
+  states,
+  talk,
+  toMinutes,
+  walkable,
+  weekday
+};

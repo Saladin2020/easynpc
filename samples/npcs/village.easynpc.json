@@ -1,0 +1,1215 @@
+{
+  "format": "easynpc/1",
+  "id": "village",
+  "map": "maps/multicultural_village.tilemap.json",
+  "clock": {
+    "dayStart": "06:00",
+    "nightStart": "19:00",
+    "secondsPerMinute": 0.5,
+    "speed": 3,
+    "firstWeekday": "mon"
+  },
+  "places": {
+    "temple": {
+      "x": 6,
+      "y": 9,
+      "facing": "back",
+      "name": {
+        "th": "วัด",
+        "en": "Temple",
+        "ms": "Wat"
+      }
+    },
+    "sala": {
+      "x": 9,
+      "y": 9,
+      "name": {
+        "th": "ศาลาวัด",
+        "en": "Temple pavilion",
+        "ms": "Sala"
+      }
+    },
+    "shrine": {
+      "x": 17,
+      "y": 10,
+      "facing": "back",
+      "name": {
+        "th": "ศาลเจ้า",
+        "en": "Chinese shrine",
+        "ms": "Tokong"
+      }
+    },
+    "mosque": {
+      "x": 29,
+      "y": 9,
+      "facing": "back",
+      "name": {
+        "th": "มัสยิด",
+        "en": "Mosque",
+        "ms": "Masjid"
+      }
+    },
+    "tadika": {
+      "x": 34,
+      "y": 12,
+      "facing": "back",
+      "name": {
+        "th": "ตาดีกา",
+        "en": "Tadika school",
+        "ms": "Tadika"
+      }
+    },
+    "market": {
+      "x": 23,
+      "y": 14,
+      "name": {
+        "th": "ลานตลาด",
+        "en": "Market square",
+        "ms": "Pasar"
+      }
+    },
+    "stall_fruit": {
+      "x": 16,
+      "y": 16,
+      "facing": "front",
+      "name": {
+        "th": "แผงผลไม้ป้าแดง",
+        "en": "Fruit stall",
+        "ms": "Gerai buah"
+      }
+    },
+    "stall_sweets": {
+      "x": 26,
+      "y": 16,
+      "facing": "front",
+      "name": {
+        "th": "ร้านขนมเปี๊ยะอากง",
+        "en": "Pastry stall",
+        "ms": "Gerai kuih"
+      }
+    },
+    "stall_roti": {
+      "x": 29,
+      "y": 16,
+      "facing": "front",
+      "name": {
+        "th": "ร้านโรตีก๊ะนะ (ฮาลาล)",
+        "en": "Kak Na's roti (halal)",
+        "ms": "Roti Kak Na (halal)"
+      }
+    },
+    "stall_halal": {
+      "x": 23,
+      "y": 16,
+      "facing": "front",
+      "name": {
+        "th": "ร้านน้ำชาฮาลาล",
+        "en": "Halal tea stall",
+        "ms": "Gerai teh halal"
+      }
+    },
+    "beach": {
+      "x": 24,
+      "y": 25,
+      "facing": "front",
+      "name": {
+        "th": "ชายหาด",
+        "en": "Beach",
+        "ms": "Pantai"
+      }
+    },
+    "boats": {
+      "x": 27,
+      "y": 25,
+      "facing": "front",
+      "name": {
+        "th": "ลานเรือกอและ",
+        "en": "Kolek boats",
+        "ms": "Perahu kolek"
+      }
+    },
+    "fish_rack": {
+      "x": 24,
+      "y": 24,
+      "facing": "front",
+      "name": {
+        "th": "ราวตากปลา",
+        "en": "Fish drying racks",
+        "ms": "Para ikan"
+      }
+    },
+    "house_fatimah": {
+      "x": 24,
+      "y": 13,
+      "facing": "back",
+      "name": {
+        "th": "บ้านก๊ะฟาตีมะห์",
+        "en": "Fatimah's house",
+        "ms": "Rumah Fatimah"
+      }
+    },
+    "house_makyah": {
+      "x": 32,
+      "y": 23,
+      "facing": "back",
+      "name": {
+        "th": "บ้านก๊ะนะ",
+        "en": "Kak Na's house",
+        "ms": "Rumah Kak Na"
+      }
+    },
+    "house_imam": {
+      "x": 41,
+      "y": 21,
+      "facing": "back",
+      "name": {
+        "th": "บ้านปะจิ",
+        "en": "Pak Cik's house",
+        "ms": "Rumah Pak Cik"
+      }
+    },
+    "house_mee": {
+      "x": 12,
+      "y": 21,
+      "facing": "back",
+      "name": {
+        "th": "บ้านป้าแดง",
+        "en": "Auntie Daeng's house",
+        "ms": "Rumah Mak Daeng"
+      }
+    },
+    "house_ton": {
+      "x": 3,
+      "y": 21,
+      "facing": "back",
+      "name": {
+        "th": "บ้านตาเพิ่ม",
+        "en": "Grandpa Poem's house",
+        "ms": "Rumah Tok Poem"
+      }
+    }
+  },
+  "activities": {
+    "sleep": {
+      "th": "นอนหลับ",
+      "en": "Sleeping",
+      "ms": "Tidur"
+    },
+    "home": {
+      "th": "อยู่บ้าน",
+      "en": "At home",
+      "ms": "Di rumah"
+    },
+    "cook": {
+      "th": "ทำกับข้าว",
+      "en": "Cooking",
+      "ms": "Memasak"
+    },
+    "teach": {
+      "th": "สอนเด็กๆ",
+      "en": "Teaching",
+      "ms": "Mengajar"
+    },
+    "study": {
+      "th": "เรียนหนังสือ",
+      "en": "Studying",
+      "ms": "Belajar"
+    },
+    "play": {
+      "th": "เล่นกับเพื่อน",
+      "en": "Playing",
+      "ms": "Bermain"
+    },
+    "sell_fruit": {
+      "th": "ขายผลไม้",
+      "en": "Selling fruit",
+      "ms": "Menjual buah"
+    },
+    "sell_roti": {
+      "th": "ทอดโรตี",
+      "en": "Frying roti",
+      "ms": "Menebar roti"
+    },
+    "sell_sweets": {
+      "th": "ขายขนมเปี๊ยะ",
+      "en": "Selling pastries",
+      "ms": "Menjual kuih"
+    },
+    "tea": {
+      "th": "นั่งดื่มชา",
+      "en": "Drinking tea",
+      "ms": "Minum teh"
+    },
+    "alms": {
+      "th": "เดินบิณฑบาต",
+      "en": "Morning alms round",
+      "ms": "Berjalan menerima sedekah"
+    },
+    "temple": {
+      "th": "อยู่ที่วัด",
+      "en": "At the temple",
+      "ms": "Di wat"
+    },
+    "sweep": {
+      "th": "กวาดลาน",
+      "en": "Sweeping",
+      "ms": "Menyapu"
+    },
+    "mosque": {
+      "th": "ไปมัสยิด",
+      "en": "At the mosque",
+      "ms": "Di masjid"
+    },
+    "fix_boat": {
+      "th": "ซ่อมเรือกอและ",
+      "en": "Mending the kolek",
+      "ms": "Membaiki kolek"
+    },
+    "fish": {
+      "th": "ตากปลา",
+      "en": "Drying fish",
+      "ms": "Menjemur ikan"
+    },
+    "chat": {
+      "th": "คุยกับเพื่อนบ้าน",
+      "en": "Chatting",
+      "ms": "Berbual"
+    },
+    "walk_beach": {
+      "th": "เดินเล่นชายหาด",
+      "en": "Beach walk",
+      "ms": "Bersiar di pantai"
+    }
+  },
+  "npcs": [
+    {
+      "id": "fatimah",
+      "name": {
+        "th": "ก๊ะฟาตีมะห์",
+        "en": "Kak Fatimah",
+        "ms": "Kak Fatimah"
+      },
+      "role": {
+        "th": "ครูตาดีกา",
+        "en": "Tadika teacher",
+        "ms": "Guru tadika"
+      },
+      "sprite": "town_hijab_teacher",
+      "culture": "malay",
+      "home": "house_fatimah",
+      "color": "#3fa08a",
+      "schedule": [
+        {
+          "at": "05:00",
+          "place": "house_fatimah",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "07:30",
+          "place": "tadika",
+          "activity": "teach",
+          "days": [
+            "sat",
+            "sun"
+          ],
+          "dialogue": {
+            "dialogue": "salam_neighbours",
+            "node": "tadika"
+          }
+        },
+        {
+          "at": "08:00",
+          "place": "stall_halal",
+          "activity": "tea",
+          "days": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri"
+          ]
+        },
+        {
+          "at": "12:00",
+          "place": "house_fatimah",
+          "activity": "cook",
+          "indoors": true
+        },
+        {
+          "at": "15:30",
+          "place": "market",
+          "activity": "chat"
+        },
+        {
+          "at": "18:00",
+          "place": "house_fatimah",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "start": 5,
+        "talk": 2,
+        "gifts": {
+          "loved": [
+            "kurma",
+            "teh_tarik"
+          ],
+          "liked": [
+            "banana",
+            "bubur"
+          ],
+          "disliked": [
+            "balm"
+          ]
+        },
+        "levels": [
+          {
+            "at": 0,
+            "name": {
+              "th": "คนรู้จัก",
+              "en": "Acquaintance",
+              "ms": "Kenalan"
+            }
+          },
+          {
+            "at": 20,
+            "name": {
+              "th": "คนคุ้นเคย",
+              "en": "Familiar",
+              "ms": "Kenal baik"
+            }
+          },
+          {
+            "at": 50,
+            "name": {
+              "th": "เพื่อน",
+              "en": "Friend",
+              "ms": "Kawan"
+            },
+            "dialogue": {
+              "dialogue": "salam_neighbours",
+              "node": "tadika"
+            }
+          },
+          {
+            "at": 80,
+            "name": {
+              "th": "เหมือนพี่น้อง",
+              "en": "Like family",
+              "ms": "Macam keluarga"
+            }
+          }
+        ]
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "market"
+      }
+    },
+    {
+      "id": "pakcik",
+      "name": {
+        "th": "ปะจิอิสมะแอ",
+        "en": "Pak Cik Ismail",
+        "ms": "Pak Cik Ismail"
+      },
+      "role": {
+        "th": "ช่างไม้ประจำหมู่บ้าน",
+        "en": "Village carpenter",
+        "ms": "Tukang kayu kampung"
+      },
+      "sprite": "town_pak_cik",
+      "culture": "malay",
+      "home": "house_imam",
+      "speed": 2.5,
+      "color": "#d8d2c0",
+      "schedule": [
+        {
+          "at": "05:00",
+          "place": "house_imam",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "07:00",
+          "place": "stall_halal",
+          "activity": "tea"
+        },
+        {
+          "at": "09:00",
+          "place": "tadika",
+          "activity": "sweep"
+        },
+        {
+          "at": "12:15",
+          "place": "mosque",
+          "activity": "mosque",
+          "days": [
+            "fri"
+          ]
+        },
+        {
+          "at": "12:00",
+          "place": "house_imam",
+          "activity": "home",
+          "indoors": true,
+          "days": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "sat",
+            "sun"
+          ]
+        },
+        {
+          "at": "14:00",
+          "place": "house_imam",
+          "activity": "home",
+          "indoors": true,
+          "days": [
+            "fri"
+          ]
+        },
+        {
+          "at": "16:30",
+          "place": "boats",
+          "activity": "fix_boat",
+          "when": "day"
+        },
+        {
+          "at": "18:30",
+          "place": "house_imam",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 1,
+        "gifts": {
+          "loved": [
+            "teh_tarik"
+          ],
+          "liked": [
+            "kurma",
+            "ketupat"
+          ],
+          "disliked": [
+            "thai_tea"
+          ]
+        },
+        "levels": [
+          {
+            "at": 0,
+            "name": {
+              "th": "คนรู้จัก",
+              "en": "Acquaintance",
+              "ms": "Kenalan"
+            }
+          },
+          {
+            "at": 30,
+            "name": {
+              "th": "หลานรัก",
+              "en": "Favourite nephew",
+              "ms": "Anak saudara kesayangan"
+            }
+          }
+        ]
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "market"
+      },
+      "quests": [
+        {
+          "quest": "raya_prep",
+          "minAffinity": 10,
+          "from": "07:00",
+          "to": "18:00"
+        }
+      ]
+    },
+    {
+      "id": "kakna",
+      "name": {
+        "th": "ก๊ะนะ",
+        "en": "Kak Na",
+        "ms": "Kak Na"
+      },
+      "role": {
+        "th": "แม่ค้าโรตี (ร้านฮาลาล)",
+        "en": "Roti seller (halal stall)",
+        "ms": "Penjual roti (gerai halal)"
+      },
+      "sprite": "town_roti_seller",
+      "culture": "malay",
+      "home": "house_makyah",
+      "color": "#c8506a",
+      "schedule": [
+        {
+          "at": "04:30",
+          "place": "house_makyah",
+          "activity": "cook",
+          "indoors": true
+        },
+        {
+          "at": "06:30",
+          "place": "stall_roti",
+          "activity": "sell_roti",
+          "dialogue": {
+            "dialogue": "salam_neighbours",
+            "node": "raya_roti"
+          }
+        },
+        {
+          "at": "11:00",
+          "place": "house_makyah",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "16:00",
+          "place": "stall_roti",
+          "activity": "sell_roti"
+        },
+        {
+          "at": "19:00",
+          "place": "stall_roti",
+          "activity": "sell_roti",
+          "when": "night"
+        },
+        {
+          "at": "22:00",
+          "place": "house_makyah",
+          "activity": "sleep",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 2,
+        "gifts": {
+          "loved": [
+            "kurma"
+          ],
+          "liked": [
+            "banana",
+            "mango"
+          ],
+          "disliked": []
+        },
+        "levels": [
+          {
+            "at": 0,
+            "name": {
+              "th": "ลูกค้า",
+              "en": "Customer",
+              "ms": "Pelanggan"
+            }
+          },
+          {
+            "at": 25,
+            "name": {
+              "th": "ลูกค้าประจำ",
+              "en": "Regular",
+              "ms": "Pelanggan tetap"
+            }
+          },
+          {
+            "at": 60,
+            "name": {
+              "th": "หลานบุญธรรม",
+              "en": "Adopted nephew",
+              "ms": "Anak angkat"
+            }
+          }
+        ]
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "raya_roti"
+      },
+      "quests": [
+        {
+          "quest": "iftar_share",
+          "minAffinity": 0,
+          "from": "16:00",
+          "to": "19:30"
+        }
+      ]
+    },
+    {
+      "id": "adam",
+      "name": {
+        "th": "อาดัม",
+        "en": "Adam",
+        "ms": "Adam"
+      },
+      "role": {
+        "th": "เพื่อนสนิทของต้น",
+        "en": "Ton's best friend",
+        "ms": "Kawan baik Ton"
+      },
+      "sprite": "town_kopiah_boy",
+      "culture": "malay",
+      "home": "house_imam",
+      "speed": 4,
+      "color": "#5fae6e",
+      "schedule": [
+        {
+          "at": "06:00",
+          "place": "house_imam",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "07:15",
+          "place": "tadika",
+          "activity": "study",
+          "days": [
+            "sat",
+            "sun"
+          ]
+        },
+        {
+          "at": "07:15",
+          "place": "market",
+          "activity": "play",
+          "days": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri"
+          ]
+        },
+        {
+          "at": "12:15",
+          "place": "mosque",
+          "activity": "mosque",
+          "days": [
+            "fri"
+          ]
+        },
+        {
+          "at": "14:00",
+          "place": "beach",
+          "activity": "play"
+        },
+        {
+          "at": "17:30",
+          "place": "market",
+          "activity": "play",
+          "when": "day"
+        },
+        {
+          "at": "18:30",
+          "place": "house_imam",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "start": 30,
+        "talk": 3,
+        "gifts": {
+          "loved": [
+            "roti",
+            "nam_pan"
+          ],
+          "liked": [
+            "banana",
+            "mango"
+          ]
+        },
+        "levels": [
+          {
+            "at": 0,
+            "name": {
+              "th": "เพื่อน",
+              "en": "Friend",
+              "ms": "Kawan"
+            }
+          },
+          {
+            "at": 60,
+            "name": {
+              "th": "เพื่อนตาย",
+              "en": "Best friend",
+              "ms": "Kawan karib"
+            }
+          }
+        ]
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "market"
+      },
+      "quests": [
+        {
+          "quest": "raya_visit",
+          "minAffinity": 40
+        }
+      ]
+    },
+    {
+      "id": "aisyah",
+      "name": {
+        "th": "ไอชะฮ์",
+        "en": "Aisyah",
+        "ms": "Aisyah"
+      },
+      "role": {
+        "th": "นักเรียนตาดีกา",
+        "en": "Tadika pupil",
+        "ms": "Murid tadika"
+      },
+      "sprite": "town_tadika_girl",
+      "culture": "malay",
+      "home": "house_fatimah",
+      "speed": 3.5,
+      "color": "#7ab0e0",
+      "schedule": [
+        {
+          "at": "06:00",
+          "place": "house_fatimah",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "07:20",
+          "place": "tadika",
+          "activity": "study",
+          "days": [
+            "sat",
+            "sun"
+          ]
+        },
+        {
+          "at": "09:00",
+          "place": "market",
+          "activity": "play",
+          "days": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri"
+          ]
+        },
+        {
+          "at": "12:00",
+          "place": "house_fatimah",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "15:00",
+          "place": "beach",
+          "activity": "walk_beach"
+        },
+        {
+          "at": "17:45",
+          "place": "house_fatimah",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 3,
+        "gifts": {
+          "loved": [
+            "banana"
+          ],
+          "liked": [
+            "mango",
+            "nam_pan"
+          ]
+        }
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "tadika"
+      }
+    },
+    {
+      "id": "vendor",
+      "name": {
+        "th": "ป้าแดง",
+        "en": "Auntie Daeng",
+        "ms": "Mak Cik Daeng"
+      },
+      "role": {
+        "th": "แม่ค้าผลไม้",
+        "en": "Fruit seller",
+        "ms": "Penjual buah"
+      },
+      "sprite": "town_vendor",
+      "culture": "thai",
+      "home": "house_mee",
+      "color": "#e5806c",
+      "schedule": [
+        {
+          "at": "05:00",
+          "place": "house_mee",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "06:15",
+          "place": "stall_fruit",
+          "activity": "sell_fruit"
+        },
+        {
+          "at": "13:00",
+          "place": "stall_halal",
+          "activity": "chat"
+        },
+        {
+          "at": "14:00",
+          "place": "stall_fruit",
+          "activity": "sell_fruit"
+        },
+        {
+          "at": "17:00",
+          "place": "house_mee",
+          "activity": "cook",
+          "indoors": true,
+          "when": "night"
+        },
+        {
+          "at": "18:00",
+          "place": "house_mee",
+          "activity": "cook",
+          "indoors": true
+        },
+        {
+          "at": "21:00",
+          "place": "house_mee",
+          "activity": "sleep",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 2,
+        "gifts": {
+          "loved": [
+            "thai_tea"
+          ],
+          "liked": [
+            "sticky_rice",
+            "kanom_chan"
+          ],
+          "disliked": [
+            "banana"
+          ]
+        },
+        "levels": [
+          {
+            "at": 0,
+            "name": {
+              "th": "ลูกค้า",
+              "en": "Customer",
+              "ms": "Pelanggan"
+            }
+          },
+          {
+            "at": 30,
+            "name": {
+              "th": "หลานป้า",
+              "en": "Auntie's favourite",
+              "ms": "Anak saudara"
+            }
+          }
+        ]
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "market"
+      }
+    },
+    {
+      "id": "monk",
+      "name": {
+        "th": "หลวงพี่",
+        "en": "Luang Phi",
+        "ms": "Sami Luang Phi"
+      },
+      "role": {
+        "th": "พระวัดหมู่บ้าน",
+        "en": "Village monk",
+        "ms": "Sami kampung"
+      },
+      "sprite": "town_monk",
+      "culture": "thai",
+      "home": "temple",
+      "speed": 2,
+      "color": "#f0a030",
+      "schedule": [
+        {
+          "at": "04:30",
+          "place": "temple",
+          "activity": "temple",
+          "indoors": true
+        },
+        {
+          "at": "06:00",
+          "place": "market",
+          "activity": "alms"
+        },
+        {
+          "at": "06:45",
+          "place": "house_mee",
+          "activity": "alms"
+        },
+        {
+          "at": "07:30",
+          "place": "sala",
+          "activity": "temple"
+        },
+        {
+          "at": "11:00",
+          "place": "temple",
+          "activity": "temple",
+          "indoors": true
+        },
+        {
+          "at": "15:00",
+          "place": "sala",
+          "activity": "sweep"
+        },
+        {
+          "at": "17:30",
+          "place": "temple",
+          "activity": "temple",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 2,
+        "gifts": {
+          "liked": [
+            "sticky_rice",
+            "banana",
+            "thai_tea"
+          ]
+        }
+      },
+      "dialogue": {
+        "dialogue": "salam_neighbours",
+        "node": "temple"
+      }
+    },
+    {
+      "id": "hamid",
+      "name": {
+        "th": "ปะฮามิด",
+        "en": "Pak Hamid",
+        "ms": "Pak Hamid"
+      },
+      "role": {
+        "th": "ชาวประมงเรือกอและ",
+        "en": "Kolek fisherman",
+        "ms": "Nelayan kolek"
+      },
+      "sprite": "town_fisher",
+      "culture": "malay",
+      "home": "house_makyah",
+      "speed": 2.5,
+      "color": "#4f8fb0",
+      "schedule": [
+        {
+          "at": "04:00",
+          "place": "boats",
+          "activity": "fix_boat",
+          "when": "night"
+        },
+        {
+          "at": "06:00",
+          "place": "fish_rack",
+          "activity": "fish"
+        },
+        {
+          "at": "10:30",
+          "place": "stall_halal",
+          "activity": "tea"
+        },
+        {
+          "at": "12:15",
+          "place": "mosque",
+          "activity": "mosque",
+          "days": [
+            "fri"
+          ]
+        },
+        {
+          "at": "13:30",
+          "place": "boats",
+          "activity": "fix_boat"
+        },
+        {
+          "at": "18:00",
+          "place": "house_makyah",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 1,
+        "gifts": {
+          "loved": [
+            "teh_tarik"
+          ],
+          "liked": [
+            "kurma",
+            "bubur"
+          ]
+        }
+      }
+    },
+    {
+      "id": "akong",
+      "name": {
+        "th": "อากงเฮง",
+        "en": "Ah Kong Heng",
+        "ms": "Ah Kong Heng"
+      },
+      "role": {
+        "th": "เจ้าของร้านขนมเปี๊ยะ",
+        "en": "Pastry stall owner",
+        "ms": "Pemilik gerai kuih"
+      },
+      "sprite": "town_elder",
+      "culture": "chinese",
+      "home": "shrine",
+      "speed": 2,
+      "color": "#b8432f",
+      "schedule": [
+        {
+          "at": "05:30",
+          "place": "shrine",
+          "activity": "sweep"
+        },
+        {
+          "at": "07:00",
+          "place": "stall_sweets",
+          "activity": "sell_sweets"
+        },
+        {
+          "at": "12:00",
+          "place": "stall_halal",
+          "activity": "tea"
+        },
+        {
+          "at": "13:00",
+          "place": "stall_sweets",
+          "activity": "sell_sweets"
+        },
+        {
+          "at": "18:00",
+          "place": "shrine",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 1,
+        "gifts": {
+          "loved": [
+            "thai_tea"
+          ],
+          "liked": [
+            "mango",
+            "kanom_chan"
+          ]
+        },
+        "levels": [
+          {
+            "at": 0,
+            "name": {
+              "th": "คนรู้จัก",
+              "en": "Acquaintance",
+              "ms": "Kenalan"
+            }
+          },
+          {
+            "at": 40,
+            "name": {
+              "th": "หลานอากง",
+              "en": "Ah Kong's grandkid",
+              "ms": "Cucu Ah Kong"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "ta_poem",
+      "name": {
+        "th": "ตาเพิ่ม",
+        "en": "Grandpa Poem",
+        "ms": "Tok Poem"
+      },
+      "role": {
+        "th": "ชาวนาเกษียณ",
+        "en": "Retired farmer",
+        "ms": "Petani bersara"
+      },
+      "sprite": "town_farmer",
+      "culture": "thai",
+      "home": "house_ton",
+      "speed": 1.5,
+      "color": "#a08a6a",
+      "schedule": [
+        {
+          "at": "05:00",
+          "place": "house_ton",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "06:30",
+          "place": "temple",
+          "activity": "temple"
+        },
+        {
+          "at": "08:00",
+          "place": "sala",
+          "activity": "chat"
+        },
+        {
+          "at": "11:30",
+          "place": "house_ton",
+          "activity": "home",
+          "indoors": true
+        },
+        {
+          "at": "16:00",
+          "place": "beach",
+          "activity": "walk_beach",
+          "when": "day"
+        },
+        {
+          "at": "18:00",
+          "place": "house_ton",
+          "activity": "home",
+          "indoors": true
+        }
+      ],
+      "affinity": {
+        "talk": 2,
+        "gifts": {
+          "loved": [
+            "balm"
+          ],
+          "liked": [
+            "mango",
+            "sticky_rice"
+          ]
+        }
+      }
+    }
+  ]
+}
