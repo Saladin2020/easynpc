@@ -129,7 +129,7 @@ current activity's `dialogue` (when arrived) › the highest reached level's ›
 Days roll into weeks, seasons and years; each day gets a weather (`clear cloudy rain storm wind fog`) from the season's
 weights, and date events (market day, kolek race, kite festival, harvest fair) — `easynpc calendar --from 56 --days 28`.
 Schedule entries can use `weather` / `notWeather` (Hamid stays home in a storm). `WEATHER_INFO[w]` gives names, the
-[Easy FX](../easyfx) effect (`rain`, `storm_rain`, `falling_leaves`, `fog_drift`), a darken amount and gameplay hints
+[Easy FX](../easyfx) effect (`rain`, `storm_rain`, `wind_gust`, `fog_drift`), a darken amount and gameplay hints
 (`waters` crops, `fishing` multiplier). Hearts are `points / heartSize`; `heartEvents` fire once at N hearts
 (`easynpc hearts fatimah --points 25`). Godot: `NPCs.day_changed`, `weather_changed`, `heart_event`, `NPCs.weather()`,
 `take_heart_event(id)`; Pixi: `view.on("day" | "weather" | "heart")`, `view.weather()`, `view.takeHeartEvent(id)`.

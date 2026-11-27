@@ -27,7 +27,7 @@ var WEATHER_INFO = {
   cloudy: { name: n("\u0E40\u0E21\u0E06\u0E04\u0E23\u0E36\u0E49\u0E21", "Cloudy", "Mendung"), fx: null, darken: 0.12, wind: 0.1, outdoors: true, waters: false, fishing: 1.2 },
   rain: { name: n("\u0E1D\u0E19\u0E15\u0E01", "Rain", "Hujan"), fx: "rain", darken: 0.25, wind: 0.2, outdoors: true, waters: true, fishing: 1.5 },
   storm: { name: n("\u0E1E\u0E32\u0E22\u0E38\u0E1D\u0E19", "Storm", "Ribut"), fx: "storm_rain", darken: 0.45, wind: 0.8, outdoors: false, waters: true, fishing: 0 },
-  wind: { name: n("\u0E25\u0E21\u0E41\u0E23\u0E07", "Windy", "Berangin"), fx: "falling_leaves", darken: 0.05, wind: 0.6, outdoors: true, waters: false, fishing: 0.8 },
+  wind: { name: n("\u0E25\u0E21\u0E41\u0E23\u0E07", "Windy", "Berangin"), fx: "wind_gust", darken: 0.05, wind: 0.6, outdoors: true, waters: false, fishing: 0.8 },
   fog: { name: n("\u0E2B\u0E21\u0E2D\u0E01\u0E25\u0E07", "Fog", "Berkabus"), fx: "fog_drift", darken: 0.2, wind: 0, outdoors: true, waters: false, fishing: 0.7 }
 };
 var FOG_LIFTS = 11 * 60;

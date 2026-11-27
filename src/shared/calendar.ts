@@ -36,7 +36,7 @@ export const WEATHER_INFO: Record<Weather, { name: Name; fx: string | null; dark
   cloudy: { name: n("เมฆครึ้ม", "Cloudy", "Mendung"), fx: null, darken: 0.12, wind: 0.1, outdoors: true, waters: false, fishing: 1.2 },
   rain: { name: n("ฝนตก", "Rain", "Hujan"), fx: "rain", darken: 0.25, wind: 0.2, outdoors: true, waters: true, fishing: 1.5 },
   storm: { name: n("พายุฝน", "Storm", "Ribut"), fx: "storm_rain", darken: 0.45, wind: 0.8, outdoors: false, waters: true, fishing: 0 },
-  wind: { name: n("ลมแรง", "Windy", "Berangin"), fx: "falling_leaves", darken: 0.05, wind: 0.6, outdoors: true, waters: false, fishing: 0.8 },
+  wind: { name: n("ลมแรง", "Windy", "Berangin"), fx: "wind_gust", darken: 0.05, wind: 0.6, outdoors: true, waters: false, fishing: 0.8 },
   fog: { name: n("หมอกลง", "Fog", "Berkabus"), fx: "fog_drift", darken: 0.2, wind: 0, outdoors: true, waters: false, fishing: 0.7 },
 };
 
