@@ -11,7 +11,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { FACINGS, FORMAT, WEEKDAYS, WHEN } from "../shared/types.js";
-import { WEATHER_INFO, forecast, heartEventDue, hearts, newBond } from "../shared/engine.js";
+import { WEATHER_INFO, departures, floodEffects, floodLevel, forecast, heartEventDue, hearts, lighting, newBond, shopStatus, toMinutes } from "../shared/engine.js";
 import { EXPORT_PRESETS, exportNpcs } from "../lib/export.js";
 import { npcDay, parseTime, pathBetween, setEntry, simulateBond, upsertNpc, whereAt } from "../lib/ops.js";
 import { encodePng } from "../lib/png.js";
@@ -19,7 +19,7 @@ import { renderMapPng, timelineRaster } from "../lib/render.js";
 import { checkWorkspace, loadWorldStrict, resolveWorkspace, workspaceSummary } from "../lib/workspace.js";
 import { isEntry, mcpErr as err, mcpMsg as msg, mcpText as text, parseMcpArgs, startHttp } from "./http.js";
 
-export const MCP_TOOL_NAMES = ["workspace_info", "get_schedule", "where_at", "find_path", "set_entry", "write_npc", "simulate_bond", "calendar", "hearts", "check_npcs", "render_map", "export_npcs"] as const;
+export const MCP_TOOL_NAMES = ["workspace_info", "get_schedule", "where_at", "find_path", "set_entry", "write_npc", "simulate_bond", "calendar", "town_life", "hearts", "check_npcs", "render_map", "export_npcs"] as const;
 
 const IdSchema = z.string().regex(/^[a-z0-9][a-z0-9_-]*$/, "Use a-z, 0-9, _ or -");
 const TimeSchema = z.string().regex(/^\d{1,2}:\d{2}$/, "HH:MM");
@@ -149,6 +149,26 @@ export function createEasyNpcMcp(workspaceRoot: string): McpServer {
       try {
         const world = await loadWorldStrict(root);
         return text({ calendar: world.calendar, weatherInfo: WEATHER_INFO, days: forecast(world, from ?? 0, days ?? 28) });
+      } catch (e) {
+        return err(msg(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    "town_life",
+    { title: "Town life", description: "At a game day + time: the smooth light phase (dawn, morning, noon, afternoon, sunset, evening, night, late night: tint / darkness / lamps), which shops are open or closed (hours, closed days, market-day stalls, flood), the train / flight departure boards and the flood level with its effects.", inputSchema: { day: z.number().int().min(0), at: z.string().regex(/^\d{1,2}:\d{2}$/), station: z.string().optional() } },
+    async ({ day, at, station }) => {
+      try {
+        const world = await loadWorldStrict(root);
+        const minute = toMinutes(at);
+        const fl = floodLevel(world, day, minute);
+        const stations = station ? [station] : [...new Set((world.transit?.lines ?? []).map((l) => l.from))];
+        return text({
+          day, at, light: lighting(world, minute), flood: { level: fl, ...floodEffects(fl) },
+          shops: Object.fromEntries(Object.keys(world.shops ?? {}).map((id) => [id, shopStatus(world, id, day, minute, fl)])),
+          departures: Object.fromEntries(stations.map((st) => [st, departures(world, st, day, minute, { n: 6 })])),
+        });
       } catch (e) {
         return err(msg(e));
       }

@@ -18,7 +18,10 @@ const body = (r) => JSON.parse(r.content?.[0]?.text ?? "{}");
 async function exercise(client, label) {
   const tools = (await client.listTools()).tools.map((t) => t.name);
   console.log(`[${label}] tools (${tools.length}):`, tools.join(", "));
-  if (tools.length !== 12) fail(`${label}: expected 12 tools`);
+  if (tools.length !== 13) fail(`${label}: expected 13 tools`);
+  const town = body(await client.callTool({ name: "town_life", arguments: { day: 5, at: "07:50" } }));
+  console.log(`[${label}] town 07:50: ${town.light?.phase} shops open=${Object.values(town.shops ?? {}).filter((x) => x.open).length} flood=${town.flood?.level}`);
+  if (town.light?.phase !== "morning" || !town.departures?.talat_sin_heng?.length) fail(`${label}: town_life`);
   const info = body(await client.callTool({ name: "workspace_info", arguments: {} }));
   console.log(`[${label}] npcs=${info.npcs?.length} places=${info.places?.length} map=${info.map?.id}`);
   if (info.npcs?.length !== 10) fail(`${label}: workspace_info`);

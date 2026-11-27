@@ -4,6 +4,9 @@
  *   view opts: { day, minute, lang: "th"|"en"|"ms", labels: true, activity: false }
  *   const view = await npcs.view({ day: 0, minute: 420, lang: "th" });  app.stage.addChild(view.container);
  *   app.ticker.add((t) => view.update(t.deltaMS / 1000));
+ * Town life: view.light() → { phase, tint, tintHex, dark, lamps } · view.shop(id) → { open, reason, opensAt, closesAt }
+ *   view.departures(station, { kind, n }) · view.serviceAt(station, kind) · view.flood() / view.setFlood(level | null)
+ *   events: "phase" (phase, light), "flood" (level, stage), "shop" (id, status) when a shop opens / closes.
  * The schedule / A* / affinity logic is easynpc-core.js — the same engine the CLI and Godot export use.
  */
 import * as engine from "./easynpc-core.js";
@@ -50,7 +53,7 @@ export async function loadNpcs(PIXI, url) {
     const v = {
       container, world, engine,
       day: opts.day ?? 0, minute: opts.minute ?? engine.toMinutes(world.clock.dayStart), lang: opts.lang ?? "th",
-      forcedNight: null, bonds: {}, handlers: {}, actors: {}, states: {},
+      forcedNight: null, forcedFlood: null, bonds: {}, handlers: {}, actors: {}, states: {}, _shops: {},
     };
     for (const n of world.npcs) {
       v.bonds[n.id] = engine.newBond(n);
@@ -83,19 +86,29 @@ export async function loadNpcs(PIXI, url) {
         const w = v.weather();
         if (w !== v._lastWeather) { v._lastWeather = w; v.emit("weather", w, engine.WEATHER_INFO[w]); }
       }
+      const ph = engine.phaseAt(v.minute);
+      if (ph !== v._lastPhase) { v._lastPhase = ph; v.emit("phase", ph, v.light()); }
+      const fl = v.flood();
+      const st = engine.floodStage(fl);
+      if (st !== v._lastFlood) { v._lastFlood = st; v.emit("flood", fl, st); v.refresh(); }
+      for (const id of Object.keys(world.shops ?? {})) {
+        const s = v.shop(id);
+        if (v._shops[id] !== s.open) { const had = id in v._shops; v._shops[id] = s.open; if (had) v.emit("shop", id, s); }
+      }
     };
     v.update = (dt) => v.setTime(v.day, v.minute + dt / (world.clock.secondsPerMinute || 1));
     v.refresh = () => {
       const night = v.night();
       bg.texture = (night ? nightBg : dayBg) ?? bg.texture;
       const m = Math.floor(v.minute * 100) / 100;
+      const flooded = engine.floodEffects(v.flood()).npcsIndoors;
       for (const n of world.npcs) {
         const s = engine.state(world, n.id, v.day, m, v.forcedNight ?? undefined);
         const prev = v.states[n.id];
         v.states[n.id] = s;
         if (prev && prev.moving && !s.moving) v.emit("arrive", n, s.place, s.activity);
         const { a, body, label } = v.actors[n.id];
-        a.visible = !s.indoors;
+        a.visible = !s.indoors && !flooded;
         a.x = Math.round(s.x * ts + ts / 2);
         a.y = Math.round(s.y * ts + ts);
         a.zIndex = a.y;
@@ -143,6 +156,14 @@ export async function loadNpcs(PIXI, url) {
     v.hearts = (id) => { const n = world.npcs.find((x) => x.id === id); return n ? engine.hearts(n, v.bonds[id].points) : 0; };
     v.heartEventDue = (id) => { const n = world.npcs.find((x) => x.id === id); return n ? engine.heartEventDue(n, v.bonds[id]) : null; };
     v.takeHeartEvent = (id) => { const e = v.heartEventDue(id); if (e) engine.markHeartEvent(v.bonds[id], e.id); return e; };
+    v.light = () => engine.lighting(world, v.minute);
+    v.phase = () => engine.phaseAt(v.minute);
+    v.flood = () => v.forcedFlood ?? (world.calendar ? engine.floodLevel(world, v.day, v.minute) : 0);
+    v.setFlood = (level) => { v.forcedFlood = level; v.setTime(v.day, v.minute); };
+    v.floodEffects = () => engine.floodEffects(v.flood());
+    v.shop = (id) => engine.shopStatus(world, id, v.day, v.minute, v.flood());
+    v.departures = (station, o = {}) => engine.departures(world, station, v.day, v.minute, o);
+    v.serviceAt = (station, kind) => engine.serviceAt(world, station, v.day, v.minute, kind);
     v.toJSON = () => ({ day: v.day, minute: v.minute, bonds: v.bonds });
     v.load = (d) => { Object.assign(v.bonds, d.bonds ?? {}); v.setTime(d.day ?? 0, d.minute ?? 0); };
     v.refresh();

@@ -10,6 +10,7 @@ import type { Clock, DialogueRef, Facing, HeartEvent, Npc, Place, ScheduleEntry,
 import { WEEKDAYS } from "./types.js";
 import { weatherOn } from "./calendar.js";
 export * from "./calendar.js";
+export * from "./townlife.js";
 
 export const DEFAULT_CLOCK: Clock = { dayStart: "06:00", nightStart: "19:00", secondsPerMinute: 1, speed: 3, firstWeekday: "mon" };
 

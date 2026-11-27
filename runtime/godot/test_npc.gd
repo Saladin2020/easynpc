@@ -96,6 +96,31 @@ func _init() -> void:
 		if JSON.stringify(log2) != JSON.stringify(_ints(hb.log)):
 			_fail("hearts %s: %s vs %s" % [hb.id, JSON.stringify(log2), JSON.stringify(hb.log)])
 	print("C|calendar days %d" % par.get("days", []).size())
+	# 1f. town life: lighting, shop hours, timetables, flooding
+	var town: Dictionary = par.get("town", {})
+	for c in town.get("light", []):
+		var l := EasyNpcEngine.lighting(world, float(c.minute))
+		if l.phase != c.phase or JSON.stringify(_ints(l.tint)) != JSON.stringify(_ints(c.tint)) or abs(l.dark - c.dark) > 0.0005 or abs(l.lamps - c.lamps) > 0.0005:
+			_fail("lighting %d: %s vs %s" % [c.minute, JSON.stringify(l), JSON.stringify(c)])
+	for c in town.get("shops", []):
+		var s2 := EasyNpcEngine.shop_status(world, c.id, int(c.day), float(c.minute), float(c.flood))
+		if s2.open != c.open or s2.reason != c.reason or s2.opensAt != c.opensAt or s2.closesAt != c.closesAt:
+			_fail("shop %s day %d %d: %s vs %s" % [c.id, c.day, c.minute, JSON.stringify(s2), JSON.stringify(c)])
+	for c in town.get("deps", []):
+		var got := EasyNpcEngine.departures(world, c.station, int(c.day), float(c.minute), "", 5)
+		var a: Array = []
+		var b: Array = []
+		for x in got:
+			a.append("%s@%d+%d:%s" % [x.line, int(x.at), int(x.delay), x.status])
+		for x in c.list:
+			b.append("%s@%d+%d:%s" % [x.line, int(x.at), int(x.delay), x.status])
+		if a != b:
+			_fail("departures %s day %d %d: %s vs %s" % [c.station, c.day, c.minute, str(a), str(b)])
+	for c in town.get("floods", []):
+		var lv := EasyNpcEngine.flood_level(world, int(c.day), float(c.minute))
+		if abs(lv - c.level) > 0.0005 or EasyNpcEngine.flood_effects(lv).stage != c.stage:
+			_fail("flood day %d %d: %s vs %s" % [c.day, c.minute, lv, c.level])
+	print("T|town light %d shops %d deps %d floods %d" % [town.get("light", []).size(), town.get("shops", []).size(), town.get("deps", []).size(), town.get("floods", []).size()])
 	# 2. autoload
 	var npcs = get_root().get_node("NPCs")
 	npcs.running = false

@@ -7,7 +7,7 @@ import open from "open";
 import { createApp } from "./server/app.js";
 import { defaultWebRoot } from "./server/base.js";
 import { resolveToken } from "./shared/requestGuard.js";
-import { WEATHER_INFO, eventsOn, fmtTime, forecast, hearts, heartEventDue, newBond, weatherAt } from "./shared/engine.js";
+import { FLOOD_INFO, PHASE_INFO, WEATHER_INFO, departures, eventsOn, floodEffects, floodLevel, fmtTime, forecast, hearts, heartEventDue, lighting, newBond, shopStatus, toMinutes, weatherAt } from "./shared/engine.js";
 import { FACINGS, WEEKDAYS, WHEN, type ScheduleEntry } from "./shared/types.js";
 import { EXPORT_PRESETS, exportNpcs, type ExportPreset } from "./lib/export.js";
 import { npcDay, parseTime, pathBetween, removeEntry, setEntry, simulateBond, whereAt } from "./lib/ops.js";
@@ -161,6 +161,41 @@ program
         const season = cal.seasons.find((x) => x.id === r.season)?.name;
         const evs = eventsOn(world, r.day).map((e) => `${nm(e.name, o.lang)}${e.from ? ` ${e.from}–${e.to ?? ""}` : ""}`);
         console.log(`day ${String(r.day).padStart(3)}  Y${r.year} ${nm(season, o.lang).padEnd(10)} ${String(r.dayOfSeason).padStart(2)} (${r.weekday})  ${nm(WEATHER_INFO[r.weather].name, o.lang).padEnd(8)}${r.weather === "fog" ? `→${weatherAt(world, r.day, 720)}` : ""}${evs.length ? `  ★ ${evs.join(", ")}` : ""}`);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+program
+  .command("town")
+  .description("Town life at a time: light phase, shops open/closed, departures, flood: easynpc town --day 5 --at 07:50 --station talat_sin_heng")
+  .option("--day <n>", "Game day", "0")
+  .option("--at <HH:MM>", "Time", "08:00")
+  .option("--station <id>", "Station / airport for the departure board")
+  .option("--lang <th|en|ms>", "Language", "th")
+  .option("--workspace <path>")
+  .option("--json")
+  .action(async (o: { day: string; at: string; station?: string; lang: string; workspace?: string; json?: boolean }) => {
+    try {
+      const world = await loadWorldStrict(workspaceOf(o.workspace));
+      const day = Number(o.day);
+      const minute = toMinutes(o.at);
+      if (Number.isNaN(minute)) throw new Error(`--at "${o.at}" is not HH:MM`);
+      const fl = floodLevel(world, day, minute);
+      const stations = o.station ? [o.station] : [...new Set((world.transit?.lines ?? []).map((l) => l.from))];
+      const r = {
+        day, at: o.at, light: lighting(world, minute), flood: { level: fl, ...floodEffects(fl) },
+        shops: Object.fromEntries(Object.keys(world.shops ?? {}).map((id) => [id, shopStatus(world, id, day, minute, fl)])),
+        departures: Object.fromEntries(stations.map((st) => [st, departures(world, st, day, minute, { n: 5 })])),
+      };
+      if (o.json) return console.log(JSON.stringify(r, null, 2));
+      console.log(`day ${day} ${o.at}  ${nm(PHASE_INFO[r.light.phase].name, o.lang)}  tint #${r.light.tintHex.toString(16).padStart(6, "0")} dark ${r.light.dark} lamps ${r.light.lamps}`);
+      console.log(`flood ${fl} (${nm(FLOOD_INFO[r.flood.stage].name, o.lang)}, walk ×${r.flood.walk})`);
+      for (const [id, st] of Object.entries(r.shops)) console.log(`  ${st.open ? "OPEN  " : "closed"} ${nm(world.shops![id]!.name, o.lang)}  ${st.opensAt}–${st.closesAt}${st.open ? "" : ` (${st.reason})`}`);
+      for (const [st, list] of Object.entries(r.departures)) {
+        console.log(`board ${st}`);
+        for (const d of list) console.log(`  ${d.depart}${d.delay ? `+${d.delay}` : ""}  ${d.kind.padEnd(6)} → ${d.to.padEnd(16)} ${d.status}${d.day !== day ? " (tomorrow)" : ""}`);
       }
     } catch (e) {
       fail(e);
