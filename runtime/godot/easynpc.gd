@@ -12,6 +12,9 @@ signal arrived(id: String, place: String, activity: String)
 signal talked(id: String, dialogue, delta: int)
 signal gifted(id: String, item: String, kind: String, delta: int)
 signal level_up(id: String, level: Dictionary)
+signal day_changed(day: int, date: Dictionary, weather: String, events: Array)
+signal weather_changed(weather: String)
+signal heart_event(id: String, event: Dictionary)
 
 const Engine2 := preload("res://easynpc/npc_engine.gd")
 
@@ -27,6 +30,8 @@ var bonds := {}
 var lang := "th"
 var _last_night := false
 var _moving := {}
+var _last_day := -999999
+var _last_weather := ""
 
 
 func _ready() -> void:
@@ -64,6 +69,14 @@ func set_time(d: int, m: float) -> void:
 	day = d
 	minute = m
 	time_changed.emit(day, minute)
+	if world.has("calendar"):
+		if day != _last_day:
+			_last_day = day
+			day_changed.emit(day, date_info(), weather(), events_today())
+		var w := weather()
+		if w != _last_weather:
+			_last_weather = w
+			weather_changed.emit(w)
 	var n := is_night()
 	if n != _last_night:
 		_last_night = n
@@ -142,20 +155,65 @@ func talk(id: String) -> Dictionary:
 	talked.emit(id, ref, delta)
 	_quest_event("talk_%s" % id)
 	_check_level(id, before)
+	_check_heart(id)
 	return {"dialogue": ref, "delta": delta, "quests": quests_for(id)}
 
 
-func gift(id: String, item: String) -> Dictionary:
+## Calendar + weather (needs world.calendar; Easy NPC fills defaults).
+func date_info() -> Dictionary:
+	return Engine2.date(world, day)
+
+
+func weather() -> String:
+	return Engine2.weather_at(world, day, minute) if world.has("calendar") else "clear"
+
+
+func events_today(now := false) -> Array:
+	return Engine2.events_on(world, day, minute if now else null) if world.has("calendar") else []
+
+
+func forecast(days := 7) -> Array:
+	var out := []
+	for i in days:
+		out.append({"day": day + i, "weather": Engine2.weather_on(world, day + i)})
+	return out
+
+
+func hearts(id: String) -> int:
+	var n = npc(id)
+	return 0 if n == null else Engine2.hearts(n, int(bonds[id].points))
+
+
+## Marks the due heart event seen and returns it (or null). Play its dialogue / start its quest.
+func take_heart_event(id: String) -> Variant:
+	var n = npc(id)
+	if n == null:
+		return null
+	var e = Engine2.heart_event_due(n, bonds[id])
+	if e != null:
+		Engine2.mark_heart_event(bonds[id], e.id)
+	return e
+
+
+func _check_heart(id: String) -> void:
+	var n = npc(id)
+	var e = null if n == null else Engine2.heart_event_due(n, bonds[id])
+	if e != null:
+		heart_event.emit(id, e)
+
+
+func gift(id: String, item: String, tags := []) -> Dictionary:
 	var n = npc(id)
 	if n == null:
 		return {}
 	var before: int = level(id).index
-	var r := Engine2.gift(n, bonds[id], item, day)
+	var r := Engine2.gift(n, bonds[id], item, day, tags)
 	gifted.emit(id, item, r.kind, r.delta)
 	if r.delta != 0 or r.kind != "neutral":
 		_quest_event("gift_%s" % id)
 		_quest_event("gift_%s_%s" % [id, item])
 	_check_level(id, before)
+	_check_heart(id)
 	return r
 
 

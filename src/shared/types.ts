@@ -9,6 +9,9 @@ export const CULTURES = ["thai", "malay", "chinese", "rural", "other"] as const;
 export const FACINGS = ["front", "right", "back", "left"] as const;
 export type Facing = (typeof FACINGS)[number];
 
+export const WEATHERS = ["clear", "cloudy", "rain", "storm", "wind", "fog"] as const;
+export type Weather = (typeof WEATHERS)[number];
+
 export interface Name {
   th: string;
   en: string;
@@ -44,6 +47,10 @@ export interface ScheduleEntry {
   indoors?: boolean;
   /** Dialogue while doing this (overrides the NPC default, not affinity levels). */
   dialogue?: DialogueRef;
+  /** Only in this weather (e.g. fishing only when clear) — Easy NPC calendar weather. */
+  weather?: Weather[];
+  /** Never in this weather (e.g. no boat trip in a storm). */
+  notWeather?: Weather[];
 }
 
 export interface AffinityLevel {
@@ -57,8 +64,58 @@ export interface Affinity {
   max?: number;
   /** Points for the first talk each day. */
   talk?: number;
-  gifts?: { loved?: string[]; liked?: string[]; disliked?: string[] };
+  gifts?: { loved?: string[]; liked?: string[]; disliked?: string[]; refuse?: string[] };
   levels?: AffinityLevel[];
+  /** Points per heart (default 10): hearts = floor(points / heartSize). */
+  heartSize?: number;
+  /** Refuse gifts tagged pork / alcohol / non_halal (Muslim neighbours; default true for culture "malay"). */
+  halal?: boolean;
+  /** Relationship scenes unlocked at a number of hearts, played once each. */
+  heartEvents?: HeartEvent[];
+}
+
+export interface HeartEvent {
+  id: string;
+  hearts: number;
+  name?: Name;
+  dialogue?: DialogueRef;
+  /** Easy Quest event the game emits when it plays: heart <npc> <id>; optional quest it starts. */
+  quest?: string;
+}
+
+export interface Season {
+  id: string;
+  name: Name;
+  /** Days in this season (default calendar.daysPerSeason). */
+  days?: number;
+  /** Weather weights for the daily roll (default: clear only). */
+  weather?: Partial<Record<Weather, number>>;
+}
+
+export interface CalendarEvent {
+  id: string;
+  name: Name;
+  /** Season id (default: every season). */
+  season?: string;
+  /** Day of the season, 1-based (default: every day that matches weekday). */
+  day?: number;
+  weekday?: Weekday;
+  from?: string;
+  to?: string;
+  /** Easy NPC place where it happens. */
+  place?: string;
+  tags?: string[];
+}
+
+export interface Calendar {
+  daysPerSeason: number;
+  startYear: number;
+  seasons: Season[];
+  events: CalendarEvent[];
+  /** Seed of the deterministic daily weather. */
+  weatherSeed: number;
+  /** Chance (0..1) that a day keeps yesterday's base weather. */
+  persistence: number;
 }
 
 export interface QuestHook {
@@ -109,6 +166,8 @@ export interface NpcDoc {
   /** Activity id → display name. */
   activities?: Record<string, Name>;
   npcs?: Npc[];
+  /** Days, seasons, years, date events and daily weather (defaults: 3 Thai seasons × 28 days). */
+  calendar?: Partial<Calendar>;
 }
 
 export interface TileMap {
@@ -126,6 +185,7 @@ export interface World {
   places: Record<string, Place>;
   npcs: Npc[];
   activities: Record<string, Name>;
+  calendar?: Calendar;
   /** "from>to" → tile path (precomputed by the CLI, A* fallback at runtime). */
   routes?: Record<string, Array<[number, number]>>;
 }

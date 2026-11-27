@@ -6,8 +6,10 @@
  * Schedules are stateless: an NPC leaves for its current entry's place at the entry time and walks the A* route
  * from the previous entry's place at its speed. Save files therefore only need the clock and the affinity.
  */
-import type { Clock, DialogueRef, Facing, Npc, Place, ScheduleEntry, TileMap, Weekday, World } from "./types.js";
+import type { Clock, DialogueRef, Facing, HeartEvent, Npc, Place, ScheduleEntry, TileMap, Weather, Weekday, World } from "./types.js";
 import { WEEKDAYS } from "./types.js";
+import { weatherOn } from "./calendar.js";
+export * from "./calendar.js";
 
 export const DEFAULT_CLOCK: Clock = { dayStart: "06:00", nightStart: "19:00", secondsPerMinute: 1, speed: 3, firstWeekday: "mon" };
 
@@ -127,12 +129,14 @@ export interface Active {
   elapsed: number;
 }
 
-export const entryMatches = (e: ScheduleEntry, wd: Weekday, night: boolean) => (!e.days || e.days.includes(wd)) && (!e.when || e.when === "any" || (e.when === "night") === night);
+export const entryMatches = (e: ScheduleEntry, wd: Weekday, night: boolean, weather: Weather = "clear") =>
+  (!e.days || e.days.includes(wd)) && (!e.when || e.when === "any" || (e.when === "night") === night) && (!e.weather || e.weather.includes(weather)) && (!e.notWeather || !e.notWeather.includes(weather));
 
 /** The schedule entry in force at (day, minute): the latest matching entry that has started, else yesterday's last. */
 export function dayList(world: World, npc: Npc, day: number, night: boolean) {
   const wd = weekday(world.clock, day);
-  return npc.schedule.map((e, i) => ({ e, i, t: toMinutes(e.at) })).filter((x) => entryMatches(x.e, wd, night)).sort((a, b) => a.t - b.t || a.i - b.i);
+  const w = world.calendar ? weatherOn(world, day) : "clear";
+  return npc.schedule.map((e, i) => ({ e, i, t: toMinutes(e.at) })).filter((x) => entryMatches(x.e, wd, night, w)).sort((a, b) => a.t - b.t || a.i - b.i);
 }
 
 /**
@@ -247,15 +251,23 @@ export interface Bond {
   points: number;
   lastTalk: number;
   lastGift: number;
+  /** Heart events already played. */
+  seen?: string[];
 }
 
-export const newBond = (npc: Npc): Bond => ({ points: npc.affinity?.start ?? 0, lastTalk: -1, lastGift: -1 });
+export const newBond = (npc: Npc): Bond => ({ points: npc.affinity?.start ?? 0, lastTalk: -1, lastGift: -1, seen: [] });
 const clampPts = (npc: Npc, p: number) => Math.max(0, Math.min(npc.affinity?.max ?? 100, p));
 
 export const GIFT_POINTS = { loved: 8, liked: 4, neutral: 1, disliked: -4 } as const;
 
-export function giftKind(npc: Npc, item: string): keyof typeof GIFT_POINTS {
+/** Item tags a halal-keeping neighbour refuses (Easy Items tags). */
+export const NON_HALAL_TAGS = ["pork", "alcohol", "non_halal"];
+export type GiftKind = keyof typeof GIFT_POINTS | "refused";
+export const keepsHalal = (npc: Npc) => npc.affinity?.halal ?? npc.culture === "malay";
+
+export function giftKind(npc: Npc, item: string, tags: string[] = []): GiftKind {
   const g = npc.affinity?.gifts ?? {};
+  if (g.refuse?.includes(item) || (keepsHalal(npc) && tags.some((t) => NON_HALAL_TAGS.includes(t)))) return "refused";
   if (g.loved?.includes(item)) return "loved";
   if (g.liked?.includes(item)) return "liked";
   if (g.disliked?.includes(item)) return "disliked";
@@ -271,10 +283,10 @@ export function talk(npc: Npc, b: Bond, day: number): number {
   return b.points - before;
 }
 
-/** One gift per day counts. Returns { kind, delta } (delta 0 when already gifted today). */
-export function gift(npc: Npc, b: Bond, item: string, day: number): { kind: keyof typeof GIFT_POINTS; delta: number } {
-  const kind = giftKind(npc, item);
-  if (b.lastGift === day) return { kind, delta: 0 };
+/** One gift per day counts. Returns { kind, delta } (delta 0 when already gifted today; a refused gift is handed back). */
+export function gift(npc: Npc, b: Bond, item: string, day: number, tags: string[] = []): { kind: GiftKind; delta: number } {
+  const kind = giftKind(npc, item, tags);
+  if (kind === "refused" || b.lastGift === day) return { kind, delta: 0 };
   b.lastGift = day;
   const before = b.points;
   b.points = clampPts(npc, b.points + GIFT_POINTS[kind]);
@@ -289,6 +301,20 @@ export function level(npc: Npc, points: number): { index: number; at: number; na
   });
   const l = lv[idx];
   return { index: idx, at: l?.at ?? 0, name: l?.name ?? null, dialogue: l?.dialogue };
+}
+
+/** Hearts = floor(points / heartSize). */
+export const hearts = (npc: Npc, points: number) => Math.floor(points / Math.max(1, npc.affinity?.heartSize ?? 10));
+
+/** The next heart event due (enough hearts, not seen yet), lowest hearts first. */
+export function heartEventDue(npc: Npc, b: Bond): HeartEvent | null {
+  const h = hearts(npc, b.points);
+  const seen = b.seen ?? [];
+  return [...(npc.affinity?.heartEvents ?? [])].sort((a, c) => a.hearts - c.hearts).find((e) => e.hearts <= h && !seen.includes(e.id)) ?? null;
+}
+
+export function markHeartEvent(b: Bond, id: string): void {
+  b.seen = [...new Set([...(b.seen ?? []), id])];
 }
 
 /** Which dialogue to open when the player talks: activity entry > highest affinity level > NPC default. */

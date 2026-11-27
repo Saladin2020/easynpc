@@ -27,6 +27,7 @@ describe.skipIf(!GODOT)("Godot export", () => {
     expect(run.stdout).toMatch(/^S\|states \d{4}$/m);
     expect(run.stdout).toMatch(/^P\|paths 24$/m);
     expect(run.stdout).toMatch(/^B\|bonds 4$/m);
+    expect(run.stdout).toMatch(/^C\|calendar days 67$/m);
     expect(run.stdout).toMatch(/^OK$/m);
   }, 900_000);
 });

@@ -65,6 +65,37 @@ func _init() -> void:
 		if JSON.stringify(log) != JSON.stringify(_ints(bd.log)) or int(b.points) != int(bd.points):
 			_fail("bond %s: %s vs %s" % [bd.id, JSON.stringify(log), JSON.stringify(bd.log)])
 	print("B|bonds %d" % par.bonds.size())
+	# 1e. calendar + weather + hearts
+	for c in par.get("days", []):
+		var d := int(c.day)
+		var dt := EasyNpcEngine.date(world, d)
+		var evs: Array = []
+		for e in EasyNpcEngine.events_on(world, d):
+			evs.append(e.id)
+		var ev8: Array = []
+		for e in EasyNpcEngine.events_on(world, d, 480):
+			ev8.append(e.id)
+		var want: Dictionary = c.date
+		var same_date: bool = int(dt.year) == int(want.year) and dt.season == want.season and int(dt.dayOfSeason) == int(want.dayOfSeason) and int(dt.week) == int(want.week) and dt.weekday == want.weekday and int(dt.dayOfYear) == int(want.dayOfYear)
+		if not same_date or EasyNpcEngine.weather_on(world, d) != c.weather or EasyNpcEngine.weather_at(world, d, 690) != c.fog11 or JSON.stringify(evs) != JSON.stringify(c.events) or JSON.stringify(ev8) != JSON.stringify(c.market8):
+			_fail("day %d: %s %s %s vs %s" % [d, JSON.stringify(dt), EasyNpcEngine.weather_on(world, d), JSON.stringify(evs), JSON.stringify(c)])
+	for hsh in par.get("hashes", []):
+		if abs(EasyNpcEngine.hash01(int(hsh[0]), int(hsh[1]), 1) - float(hsh[2])) > 0.0001:
+			_fail("hash01 %s" % str(hsh))
+	for hb in par.get("hearts", []):
+		var npc2 = EasyNpcEngine.find_npc(world, hb.id)
+		var b2 := EasyNpcEngine.new_bond(npc2)
+		var log2: Array = []
+		for p in range(0, 61, 7):
+			b2.points = p
+			var e = EasyNpcEngine.heart_event_due(npc2, b2)
+			log2.append([p, EasyNpcEngine.hearts(npc2, p), e.id if e != null else ""])
+			if e != null:
+				EasyNpcEngine.mark_heart_event(b2, e.id)
+		log2.append(["refuse", EasyNpcEngine.gift(npc2, EasyNpcEngine.new_bond(npc2), "x", 0, ["pork"]).kind])
+		if JSON.stringify(log2) != JSON.stringify(_ints(hb.log)):
+			_fail("hearts %s: %s vs %s" % [hb.id, JSON.stringify(log2), JSON.stringify(hb.log)])
+	print("C|calendar days %d" % par.get("days", []).size())
 	# 2. autoload
 	var npcs = get_root().get_node("NPCs")
 	npcs.running = false

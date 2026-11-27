@@ -7,6 +7,9 @@ extends RefCounted
 const WEEKDAYS := ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 const DIRS := [[0, 1], [1, 0], [0, -1], [-1, 0]]
 const GIFT_POINTS := {"loved": 8, "liked": 4, "neutral": 1, "disliked": -4}
+const NON_HALAL_TAGS := ["pork", "alcohol", "non_halal"]
+const WEATHERS := ["clear", "cloudy", "rain", "storm", "wind", "fog"]
+const FOG_LIFTS := 660
 
 
 static func to_minutes(hhmm: String) -> int:
@@ -130,8 +133,12 @@ static func find_path(map: Dictionary, from: Array, to: Array) -> Array:
 
 
 # ------------------------------------------------------------------ schedules
-static func entry_matches(e: Dictionary, wd: String, night: bool) -> bool:
+static func entry_matches(e: Dictionary, wd: String, night: bool, w := "clear") -> bool:
 	if e.has("days") and e.days != null and not (e.days as Array).has(wd):
+		return false
+	if e.get("weather") != null and not (e.weather as Array).has(w):
+		return false
+	if e.get("notWeather") != null and (e.notWeather as Array).has(w):
 		return false
 	var when: String = e.get("when", "any") if e.get("when") != null else "any"
 	return when == "any" or (when == "night") == night
@@ -139,11 +146,12 @@ static func entry_matches(e: Dictionary, wd: String, night: bool) -> bool:
 
 static func day_list(world: Dictionary, npc: Dictionary, day: int, night: bool) -> Array:
 	var wd := weekday(world.clock, day)
+	var w := weather_on(world, day) if world.get("calendar") != null else "clear"
 	var out: Array = []
 	var sched: Array = npc.schedule
 	for i in sched.size():
 		var e: Dictionary = sched[i]
-		if entry_matches(e, wd, night):
+		if entry_matches(e, wd, night, w):
 			out.append({"e": e, "i": i, "t": to_minutes(e.at)})
 	out.sort_custom(func(a, b): return a.t < b.t or (a.t == b.t and a.i < b.i))
 	return out
@@ -269,7 +277,7 @@ static func states(world: Dictionary, day: int, minute: float, night = null) -> 
 # ------------------------------------------------------------------ affinity
 static func new_bond(npc: Dictionary) -> Dictionary:
 	var aff: Dictionary = npc.get("affinity", {}) if npc.get("affinity") != null else {}
-	return {"points": int(aff.get("start", 0)), "lastTalk": -1, "lastGift": -1}
+	return {"points": int(aff.get("start", 0)), "lastTalk": -1, "lastGift": -1, "seen": []}
 
 
 static func _aff(npc: Dictionary) -> Dictionary:
@@ -280,8 +288,19 @@ static func _clamp(npc: Dictionary, p: int) -> int:
 	return clampi(p, 0, int(_aff(npc).get("max", 100)))
 
 
-static func gift_kind(npc: Dictionary, item: String) -> String:
+static func keeps_halal(npc: Dictionary) -> bool:
+	var h = _aff(npc).get("halal")
+	return bool(h) if h != null else npc.get("culture") == "malay"
+
+
+static func gift_kind(npc: Dictionary, item: String, tags := []) -> String:
 	var g: Dictionary = _aff(npc).get("gifts", {})
+	if g.has("refuse") and (g.refuse as Array).has(item):
+		return "refused"
+	if keeps_halal(npc):
+		for t in tags:
+			if NON_HALAL_TAGS.has(t):
+				return "refused"
 	for k in ["loved", "liked", "disliked"]:
 		if g.has(k) and (g[k] as Array).has(item):
 			return k
@@ -297,9 +316,9 @@ static func talk(npc: Dictionary, b: Dictionary, day: int) -> int:
 	return int(b.points) - before
 
 
-static func gift(npc: Dictionary, b: Dictionary, item: String, day: int) -> Dictionary:
-	var kind := gift_kind(npc, item)
-	if int(b.lastGift) == day:
+static func gift(npc: Dictionary, b: Dictionary, item: String, day: int, tags := []) -> Dictionary:
+	var kind := gift_kind(npc, item, tags)
+	if kind == "refused" or int(b.lastGift) == day:
 		return {"kind": kind, "delta": 0}
 	b.lastGift = day
 	var before := int(b.points)
@@ -356,3 +375,126 @@ static func nearest(world: Dictionary, day: int, minute: float, x: float, y: flo
 			bd = d
 			best = s
 	return best
+
+
+# ------------------------------------------------------------------ hearts (relationships)
+static func hearts(npc: Dictionary, points: int) -> int:
+	return int(floor(points / float(max(1, int(_aff(npc).get("heartSize", 10))))))
+
+
+static func heart_event_due(npc: Dictionary, b: Dictionary) -> Variant:
+	var h := hearts(npc, int(b.points))
+	var seen: Array = b.get("seen", [])
+	var evs: Array = (_aff(npc).get("heartEvents", []) as Array).duplicate()
+	evs.sort_custom(func(a, c): return int(a.hearts) < int(c.hearts))
+	for e in evs:
+		if int(e.hearts) <= h and not seen.has(e.id):
+			return e
+	return null
+
+
+static func mark_heart_event(b: Dictionary, id: String) -> void:
+	var seen: Array = b.get("seen", [])
+	if not seen.has(id):
+		seen.append(id)
+	b.seen = seen
+
+
+# ------------------------------------------------------------------ calendar + weather (parity with calendar.ts)
+static func _cal(world: Dictionary) -> Dictionary:
+	return world.calendar
+
+
+static func _season_days(cal: Dictionary, i: int) -> int:
+	var s: Dictionary = cal.seasons[i]
+	return int(s.get("days", cal.daysPerSeason)) if s.get("days") != null else int(cal.daysPerSeason)
+
+
+static func year_length(cal: Dictionary) -> int:
+	var n := 0
+	for i in (cal.seasons as Array).size():
+		n += _season_days(cal, i)
+	return n
+
+
+static func date(world: Dictionary, day: int) -> Dictionary:
+	var cal := _cal(world)
+	var length: int = max(1, year_length(cal))
+	var d: int = max(0, day)
+	var doy := d % length
+	var day_of_year := doy
+	var si := 0
+	while si < (cal.seasons as Array).size() - 1 and doy >= _season_days(cal, si):
+		doy -= _season_days(cal, si)
+		si += 1
+	return {"day": d, "year": int(cal.startYear) + d / length, "season": cal.seasons[si].id, "seasonIndex": si, "dayOfSeason": doy + 1, "week": doy / 7 + 1, "weekday": weekday(world.clock, d), "dayOfYear": day_of_year}
+
+
+static func events_on(world: Dictionary, day: int, minute = null) -> Array:
+	var dt := date(world, day)
+	var out: Array = []
+	for e in _cal(world).events:
+		if e.get("season") != null and e.season != dt.season:
+			continue
+		if e.get("day") != null and int(e.day) != int(dt.dayOfSeason):
+			continue
+		if e.get("weekday") != null and e.weekday != dt.weekday:
+			continue
+		if minute != null:
+			var m := (int(floor(minute)) % 1440 + 1440) % 1440
+			var a := to_minutes(e.from) if e.get("from") != null else 0
+			var z := to_minutes(e.to) if e.get("to") != null else 1440
+			if m < a or m >= z:
+				continue
+		out.append(e)
+	return out
+
+
+static func _i32(v: int) -> int:
+	v = v & 0xFFFFFFFF
+	return v - 0x100000000 if v >= 0x80000000 else v
+
+
+static func _imul(a: int, b: int) -> int:
+	a = a & 0xFFFFFFFF
+	b = b & 0xFFFFFFFF
+	var lo := (a & 0xFFFF) * b
+	var hi := ((a >> 16) * b) & 0xFFFF
+	return _i32(lo + (hi << 16))
+
+
+static func hash01(seed: int, day: int, salt: int) -> float:
+	var h := _i32(_imul(seed, 374761393) + _imul(day, 668265263) + _imul(salt, 2246822519))
+	h = _imul(h ^ ((h & 0xFFFFFFFF) >> 13), 1274126177)
+	h = h ^ ((h & 0xFFFFFFFF) >> 16)
+	return float(h & 0xFFFFFFFF) / 4294967296.0
+
+
+static func _base_weather(cal: Dictionary, si: int, day: int) -> String:
+	var w: Dictionary = cal.seasons[si].get("weather", {"clear": 1}) if cal.seasons[si].get("weather") != null else {"clear": 1}
+	var total := 0.0
+	for k in WEATHERS:
+		total += max(0.0, float(w.get(k, 0)))
+	if total <= 0.0:
+		return "clear"
+	var r := hash01(int(cal.weatherSeed), day, 1) * total
+	for k in WEATHERS:
+		r -= max(0.0, float(w.get(k, 0)))
+		if r < 0.0:
+			return k
+	return "clear"
+
+
+static func weather_on(world: Dictionary, day: int) -> String:
+	var cal := _cal(world)
+	var d: int = max(0, day)
+	var si: int = date(world, d).seasonIndex
+	if d > 0 and hash01(int(cal.weatherSeed), d, 2) < float(cal.persistence) and int(date(world, d - 1).seasonIndex) == si:
+		return _base_weather(cal, si, d - 1)
+	return _base_weather(cal, si, d)
+
+
+static func weather_at(world: Dictionary, day: int, minute: float) -> String:
+	var w := weather_on(world, day)
+	var m := (int(floor(minute)) % 1440 + 1440) % 1440
+	return "cloudy" if w == "fog" and m >= FOG_LIFTS else w

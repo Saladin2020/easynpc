@@ -401,6 +401,19 @@
               "ms": "Macam keluarga"
             }
           }
+        ],
+        "heartSize": 10,
+        "heartEvents": [
+          {
+            "id": "fatimah_kuih",
+            "hearts": 2,
+            "name": {
+              "th": "สอนทำโรตีกรอบ",
+              "en": "Kuih lesson",
+              "ms": "Belajar buat kuih"
+            },
+            "quest": "kuih_lesson"
+          }
         ]
       },
       "dialogue": {
@@ -1029,7 +1042,19 @@
         {
           "at": "06:00",
           "place": "fish_rack",
-          "activity": "fish"
+          "activity": "fish",
+          "notWeather": [
+            "storm"
+          ]
+        },
+        {
+          "at": "06:00",
+          "place": "house_makyah",
+          "activity": "home",
+          "weather": [
+            "storm"
+          ],
+          "indoors": true
         },
         {
           "at": "10:30",
@@ -1211,5 +1236,8 @@
         }
       }
     }
-  ]
+  ],
+  "calendar": {
+    "weatherSeed": 7
+  }
 }

@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { DEFAULT_CLOCK, findPath, nearestWalkable, placeTile, routeKey, routePairs, toMinutes } from "../shared/engine.js";
-import { CULTURES, FACINGS, FORMAT, WEEKDAYS, WHEN, type Clock, type Diagnostic, type Name, type Npc, type NpcDoc, type Place, type TileMap, type World } from "../shared/types.js";
+import { DEFAULT_CALENDAR, DEFAULT_CLOCK, findPath, nearestWalkable, placeTile, routeKey, routePairs, toMinutes } from "../shared/engine.js";
+import { CULTURES, FACINGS, FORMAT, WEATHERS, WEEKDAYS, WHEN, type Calendar, type Clock, type Diagnostic, type Name, type Npc, type NpcDoc, type Place, type TileMap, type World } from "../shared/types.js";
 import { assertSafeId, pkgRoot, resolveInside, resolveWorkspace, SAMPLES_DIR } from "./fsx.js";
 
 export { assertSafeId, resolveWorkspace, resolveInside };
@@ -85,6 +85,7 @@ export interface LoadResult {
 
 const SACRED = /\b(prophet|muhammad|allah|quran|koran|jesus|buddha image)\b|นบี|ศาสดา|อัลกุรอาน|อัลลอฮ์|พระพุทธรูป|คัมภีร์/i;
 const NOT_HALAL = /pork|bacon|ham\b|lard|moo_|_moo|beer|wine|whisky|sake|alcohol|lao_khao|หมู|เหล้า|เบียร์/i;
+const RITUAL = /\b(prayer|worship|sermon|ordination|alms|merit|mass|eid prayer)\b|ละหมาด|บวช|ตักบาตร|ทำบุญ|เทศน์|พิธีกรรม/i;
 const nameOk = (n: unknown): n is Name => !!n && typeof n === "object" && typeof (n as Name).th === "string" && !!(n as Name).th && typeof (n as Name).en === "string" && !!(n as Name).en;
 
 /** Merge every npcs/*.easynpc.json into one world and validate it. */
@@ -97,6 +98,7 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
   const warn = (p: string, message: string) => warnings.push({ path: p, message });
   let mapRel: string | undefined;
   let clock: Clock = { ...DEFAULT_CLOCK };
+  const calendar: Calendar = structuredClone(DEFAULT_CALENDAR);
   const places: Record<string, Place> = {};
   const activities: Record<string, Name> = {};
   const npcs: Npc[] = [];
@@ -117,6 +119,28 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
       for (const k of ["dayStart", "nightStart"] as const) if (doc.clock[k] !== undefined && Number.isNaN(toMinutes(doc.clock[k]!))) err(`${f}:clock.${k}`, `"${doc.clock[k]}" is not HH:MM`);
       if (doc.clock.speed !== undefined && !(doc.clock.speed > 0)) err(`${f}:clock.speed`, "speed must be > 0 (tiles per game minute)");
       if (doc.clock.firstWeekday && !WEEKDAYS.includes(doc.clock.firstWeekday)) err(`${f}:clock.firstWeekday`, `use ${WEEKDAYS.join("|")}`);
+    }
+    if (doc.calendar) {
+      const c = doc.calendar;
+      for (const k of ["daysPerSeason", "startYear", "weatherSeed", "persistence"] as const) if (c[k] !== undefined) calendar[k] = c[k]!;
+      if (c.seasons) calendar.seasons = c.seasons;
+      if (c.events) calendar.events = c.events;
+      if (!(calendar.daysPerSeason >= 1)) err(`${f}:calendar.daysPerSeason`, "must be >= 1");
+      if (!(calendar.persistence >= 0 && calendar.persistence <= 1)) err(`${f}:calendar.persistence`, "must be between 0 and 1");
+      if (!calendar.seasons.length) err(`${f}:calendar.seasons`, "needs at least one season");
+      for (const [i, se] of calendar.seasons.entries()) {
+        if (!/^[a-z0-9][a-z0-9_-]*$/.test(se.id ?? "")) err(`${f}:calendar.seasons[${i}]`, "id must match ^[a-z0-9][a-z0-9_-]*$");
+        if (!nameOk(se.name)) err(`${f}:calendar.seasons[${i}].name`, "name needs th and en");
+        for (const k of Object.keys(se.weather ?? {})) if (!(WEATHERS as readonly string[]).includes(k)) err(`${f}:calendar.seasons[${i}].weather.${k}`, `use ${WEATHERS.join("|")}`);
+      }
+      for (const [i, ev] of calendar.events.entries()) {
+        const q = `${f}:calendar.events[${i}]${ev?.id ? `(${ev.id})` : ""}`;
+        if (!nameOk(ev.name)) err(`${q}.name`, "name needs th and en");
+        if (ev.season && !calendar.seasons.some((x) => x.id === ev.season)) err(`${q}.season`, `unknown season "${ev.season}"`);
+        if (ev.weekday && !WEEKDAYS.includes(ev.weekday)) err(`${q}.weekday`, `use ${WEEKDAYS.join("|")}`);
+        for (const k of ["from", "to"] as const) if (ev[k] && Number.isNaN(toMinutes(ev[k]!))) err(`${q}.${k}`, "not HH:MM");
+        for (const t of [ev.name?.th, ev.name?.en]) if (t && (SACRED.test(t) || RITUAL.test(t))) err(q, `content rule: festivals stay multicultural and non-ritual (market, harvest, kites, boats) ("${t}")`);
+      }
     }
     for (const [id, p] of Object.entries(doc.places ?? {})) {
       if (!/^[a-z0-9][a-z0-9_-]*$/.test(id)) err(`${f}:places.${id}`, "place id must match ^[a-z0-9][a-z0-9_-]*$");
@@ -145,6 +169,13 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
         if (e.days && (!Array.isArray(e.days) || e.days.some((x) => !WEEKDAYS.includes(x)))) err(`${q}.days`, `use ${WEEKDAYS.join(", ")}`);
         if (e.when && !WHEN.includes(e.when)) err(`${q}.when`, `use ${WHEN.join("|")}`);
         if (e.facing && !FACINGS.includes(e.facing)) err(`${q}.facing`, `use ${FACINGS.join("|")}`);
+        for (const k of ["weather", "notWeather"] as const) if (e[k] && (!Array.isArray(e[k]) || e[k]!.some((x) => !(WEATHERS as readonly string[]).includes(x)))) err(`${q}.${k}`, `use ${WEATHERS.join(", ")}`);
+      }
+      const he = n.affinity?.heartEvents ?? [];
+      for (const [k, h] of he.entries()) {
+        if (!/^[a-z0-9][a-z0-9_-]*$/.test(h.id ?? "")) err(`${p}.affinity.heartEvents[${k}]`, "id must match ^[a-z0-9][a-z0-9_-]*$");
+        if (!(Number.isInteger(h.hearts) && h.hearts >= 1)) err(`${p}.affinity.heartEvents[${k}].hearts`, "hearts must be an integer >= 1");
+        if (he.findIndex((x) => x.id === h.id) !== k) err(`${p}.affinity.heartEvents[${k}]`, `duplicate heart event "${h.id}"`);
       }
       const lv = n.affinity?.levels ?? [];
       if (lv.some((l, j) => j > 0 && l.at <= lv[j - 1]!.at)) err(`${p}.affinity.levels`, "levels must be in increasing order of at");
@@ -172,7 +203,7 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
   }
   // map spawns become places when not defined
   for (const [id, p] of Object.entries(await mapSpawns(root, mapRel))) if (!places[id] && id !== "player") places[id] = p;
-  const world: World = { map, clock, places, npcs, activities };
+  const world: World = { map, clock, places, npcs, activities, calendar };
   for (const [id, p] of Object.entries(places)) {
     if (p.x < 0 || p.y < 0 || p.x >= map.width || p.y >= map.height) err(`place ${id}`, `(${p.x},${p.y}) is outside the ${map.width}×${map.height} map`);
     else if (map.collision[p.y]![p.x] === "#") {
