@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { findPath, gift, newBond, routeKey, state, talk, level, questsFor, walkable } from "../shared/engine.js";
+import { date, eventsOn, findPath, gift, hash01, heartEventDue, hearts, markHeartEvent, newBond, routeKey, state, talk, level, questsFor, walkable, weatherAt, weatherOn } from "../shared/engine.js";
 import { mulberry32 } from "../shared/rng.js";
 import { EXPORT_PRESETS, type ExportPreset, type World } from "../shared/types.js";
 import { FONT_DIR, resolveInside, RUNTIME_DIR, Writer } from "./fsx.js";
@@ -72,7 +72,23 @@ export function parityData(world: World) {
     }
     return { id: npc.id, points: b.points, log };
   });
-  return { states, paths, bonds, routes: Object.keys(world.routes ?? {}).length };
+  // calendar + weather + hearts (Easy NPC calendar)
+  const days = [];
+  for (let d = 0; d < 200; d += 3) days.push({ day: d, date: date(world, d), weather: weatherOn(world, d), fog11: weatherAt(world, d, 690), events: eventsOn(world, d).map((e) => e.id), market8: eventsOn(world, d, 480).map((e) => e.id) });
+  const hashes = [0, 1, 7, 99, 123456].flatMap((seed) => [0, 5, 77, 1000].map((day) => [seed, day, round(hash01(seed, day, 1))]));
+  const heartsLog = world.npcs.slice(0, 4).map((npc) => {
+    const b = newBond(npc);
+    const log: unknown[] = [];
+    for (let p = 0; p <= 60; p += 7) {
+      b.points = p;
+      const e = heartEventDue(npc, b);
+      log.push([p, hearts(npc, p), e?.id ?? ""]);
+      if (e) markHeartEvent(b, e.id);
+    }
+    log.push(["refuse", gift(npc, newBond(npc), "x", 0, ["pork"]).kind]);
+    return { id: npc.id, log };
+  });
+  return { states, paths, bonds, routes: Object.keys(world.routes ?? {}).length, days, hashes, hearts: heartsLog };
 }
 
 export async function exportNpcs(root: string, opts: ExportOptions = {}): Promise<ExportResult> {

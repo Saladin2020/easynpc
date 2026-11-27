@@ -11,6 +11,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { FACINGS, FORMAT, WEEKDAYS, WHEN } from "../shared/types.js";
+import { WEATHER_INFO, forecast, heartEventDue, hearts, newBond } from "../shared/engine.js";
 import { EXPORT_PRESETS, exportNpcs } from "../lib/export.js";
 import { npcDay, parseTime, pathBetween, setEntry, simulateBond, upsertNpc, whereAt } from "../lib/ops.js";
 import { encodePng } from "../lib/png.js";
@@ -18,7 +19,7 @@ import { renderMapPng, timelineRaster } from "../lib/render.js";
 import { checkWorkspace, loadWorldStrict, resolveWorkspace, workspaceSummary } from "../lib/workspace.js";
 import { isEntry, mcpErr as err, mcpMsg as msg, mcpText as text, parseMcpArgs, startHttp } from "./http.js";
 
-export const MCP_TOOL_NAMES = ["workspace_info", "get_schedule", "where_at", "find_path", "set_entry", "write_npc", "simulate_bond", "check_npcs", "render_map", "export_npcs"] as const;
+export const MCP_TOOL_NAMES = ["workspace_info", "get_schedule", "where_at", "find_path", "set_entry", "write_npc", "simulate_bond", "calendar", "hearts", "check_npcs", "render_map", "export_npcs"] as const;
 
 const IdSchema = z.string().regex(/^[a-z0-9][a-z0-9_-]*$/, "Use a-z, 0-9, _ or -");
 const TimeSchema = z.string().regex(/^\d{1,2}:\d{2}$/, "HH:MM");
@@ -135,6 +136,36 @@ export function createEasyNpcMcp(workspaceRoot: string): McpServer {
     async ({ npc, days, gift, at }) => {
       try {
         return text(simulateBond(await loadWorldStrict(root), npc, Array.from({ length: days ?? 7 }, (_, d) => ({ day: d, time: at, gift }))));
+      } catch (e) {
+        return err(msg(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    "calendar",
+    { title: "Calendar + weather", description: "Game dates (year, season, day of season, week, weekday), date events (market days, multicultural non-ritual festivals) and the deterministic daily weather for a range of days.", inputSchema: { from: z.number().int().min(0).optional(), days: z.number().int().min(1).max(400).optional() } },
+    async ({ from, days }) => {
+      try {
+        const world = await loadWorldStrict(root);
+        return text({ calendar: world.calendar, weatherInfo: WEATHER_INFO, days: forecast(world, from ?? 0, days ?? 28) });
+      } catch (e) {
+        return err(msg(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    "hearts",
+    { title: "Hearts", description: "Hearts (points / heartSize) and the next heart event due for an NPC at a number of affinity points.", inputSchema: { npc: z.string(), points: z.number().int().min(0) } },
+    async ({ npc, points }) => {
+      try {
+        const world = await loadWorldStrict(root);
+        const n = world.npcs.find((x) => x.id === npc);
+        if (!n) return err(`unknown npc "${npc}"`);
+        const b = newBond(n);
+        b.points = points;
+        return text({ npc, points, hearts: hearts(n, points), due: heartEventDue(n, b), events: n.affinity?.heartEvents ?? [] });
       } catch (e) {
         return err(msg(e));
       }

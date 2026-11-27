@@ -7,7 +7,7 @@ import open from "open";
 import { createApp } from "./server/app.js";
 import { defaultWebRoot } from "./server/base.js";
 import { resolveToken } from "./shared/requestGuard.js";
-import { fmtTime } from "./shared/engine.js";
+import { WEATHER_INFO, eventsOn, fmtTime, forecast, hearts, heartEventDue, newBond, weatherAt } from "./shared/engine.js";
 import { FACINGS, WEEKDAYS, WHEN, type ScheduleEntry } from "./shared/types.js";
 import { EXPORT_PRESETS, exportNpcs, type ExportPreset } from "./lib/export.js";
 import { npcDay, parseTime, pathBetween, removeEntry, setEntry, simulateBond, whereAt } from "./lib/ops.js";
@@ -138,6 +138,52 @@ program
       if (o.json) return console.log(JSON.stringify(r));
       console.log(r.reachable ? `${r.tiles} tiles: ${r.path.map(([x, y]) => `${x},${y}`).join(" ")}` : `unreachable ${r.from} → ${r.to}`);
       if (!r.reachable) process.exit(1);
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+program
+  .command("calendar")
+  .description("Dates, seasons, festivals and daily weather: easynpc calendar --from 56 --days 28")
+  .option("--from <day>", "First game day (0-based)", "0")
+  .option("--days <n>", "Days", "14")
+  .option("--lang <th|en|ms>", "Language", "th")
+  .option("--workspace <path>")
+  .option("--json")
+  .action(async (o: { from: string; days: string; lang: string; workspace?: string; json?: boolean }) => {
+    try {
+      const world = await loadWorldStrict(workspaceOf(o.workspace));
+      const rows = forecast(world, Number(o.from), Number(o.days));
+      if (o.json) return console.log(JSON.stringify({ calendar: world.calendar, days: rows }, null, 2));
+      const cal = world.calendar!;
+      for (const r of rows) {
+        const season = cal.seasons.find((x) => x.id === r.season)?.name;
+        const evs = eventsOn(world, r.day).map((e) => `${nm(e.name, o.lang)}${e.from ? ` ${e.from}–${e.to ?? ""}` : ""}`);
+        console.log(`day ${String(r.day).padStart(3)}  Y${r.year} ${nm(season, o.lang).padEnd(10)} ${String(r.dayOfSeason).padStart(2)} (${r.weekday})  ${nm(WEATHER_INFO[r.weather].name, o.lang).padEnd(8)}${r.weather === "fog" ? `→${weatherAt(world, r.day, 720)}` : ""}${evs.length ? `  ★ ${evs.join(", ")}` : ""}`);
+      }
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+program
+  .command("hearts <npc>")
+  .description("Hearts and heart events at a number of affinity points: easynpc hearts fatimah --points 25")
+  .option("--points <n>", "Affinity points", "0")
+  .option("--workspace <path>")
+  .option("--json")
+  .action(async (id: string, o: { points: string; workspace?: string; json?: boolean }) => {
+    try {
+      const world = await loadWorldStrict(workspaceOf(o.workspace));
+      const npc = world.npcs.find((x) => x.id === id);
+      if (!npc) throw new Error(`unknown npc "${id}"`);
+      const b = newBond(npc);
+      b.points = Number(o.points);
+      const r = { npc: id, points: b.points, hearts: hearts(npc, b.points), heartSize: npc.affinity?.heartSize ?? 10, due: heartEventDue(npc, b), events: npc.affinity?.heartEvents ?? [] };
+      if (o.json) return console.log(JSON.stringify(r, null, 2));
+      console.log(`${id}: ${r.points} pts = ${"♥".repeat(r.hearts)}${r.hearts ? "" : "0"} (${r.heartSize}/heart)  next event: ${r.due ? `${r.due.id} (${r.due.hearts}♥)` : "-"}`);
+      for (const e of r.events) console.log(`  ${e.hearts}♥ ${e.id}${e.name ? ` ${e.name.th} · ${e.name.en}` : ""}${e.quest ? `  quest ${e.quest}` : ""}`);
     } catch (e) {
       fail(e);
     }

@@ -39,7 +39,7 @@ Places are tiles; a blocked tile is snapped to the nearest walkable one (with a 
 | `speed` | tiles per game minute (default `clock.speed`) |
 | `color` | timeline / marker colour |
 | `schedule` | entries, below |
-| `affinity` | `{ start, max, talk, gifts: { loved, liked, disliked }, levels: [{ at, name, dialogue? }] }` |
+| `affinity` | `{ start, max, talk, gifts: { loved, liked, disliked, refuse? }, levels: [{ at, name, dialogue? }], heartSize?, halal?, heartEvents?: [{ id, hearts, name?, dialogue?, quest? }] }` — `halal` (default for `culture: "malay"`) refuses gifts tagged `pork`, `alcohol` or `non_halal` without using up the day's gift |
 | `dialogue` | `{ dialogue, node? }` default Easy Dialogue script |
 | `quests` | `[{ quest, minAffinity?, from?, to? }]` Easy Quest quest ids |
 
@@ -55,9 +55,20 @@ Places are tiles; a blocked tile is snapped to the nearest walkable one (with a 
 | `facing` | `front · right · back · left` once arrived (default: the place's, else the walking direction) |
 | `indoors` | hidden while there |
 | `dialogue` | `{ dialogue, node? }` while doing this |
+| `weather` / `notWeather` | only when today's weather is (not) one of `clear · cloudy · rain · storm · wind · fog` |
 
 The entry in force at (day, minute) is the latest matching entry that has started, else yesterday's last. The NPC
 walks from the place of the entry before it. Equal times keep file order.
+
+## Calendar (`calendar` in any `.easynpc.json`, merged with defaults)
+
+`{ daysPerSeason: 28, startYear: 1, weatherSeed, persistence: 0.35, seasons: [{ id, name, days?, weather: { clear: 5, rain: 2, … } }],
+events: [{ id, name, season?, day?, weekday?, from?, to?, place?, tags? }] }`
+
+Defaults: three Thai seasons — hot (ร้อน), rainy (ฝน), cool (หนาว) — 28 days each; events: Saturday market (07–13),
+kolek boat race (rainy 25), kite festival (cool 10), harvest fair (cool 20). Events must be fairs, markets and
+festivals; religious rituals are rejected. Weather is a deterministic roll per day (season weights, seed, and a
+`persistence` chance to keep yesterday's); morning fog lifts to cloudy at 11:00. Same results in TS, Pixi and Godot.
 
 ## World file (`easynpc.world.json`, exports)
 

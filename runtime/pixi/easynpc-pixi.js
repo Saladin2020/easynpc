@@ -76,7 +76,13 @@ export async function loadNpcs(PIXI, url) {
     v.setTime = (day, minute) => {
       while (minute >= 1440) { minute -= 1440; day += 1; }
       while (minute < 0) { minute += 1440; day -= 1; }
+      const newDay = day !== v.day;
       v.day = day; v.minute = minute; v.refresh();
+      if (world.calendar) {
+        if (newDay || v._lastDay === undefined) { v._lastDay = day; v.emit("day", v.date(), v.weather(), v.events()); }
+        const w = v.weather();
+        if (w !== v._lastWeather) { v._lastWeather = w; v.emit("weather", w, engine.WEATHER_INFO[w]); }
+      }
     };
     v.update = (dt) => v.setTime(v.day, v.minute + dt / (world.clock.secondsPerMinute || 1));
     v.refresh = () => {
@@ -113,19 +119,30 @@ export async function loadNpcs(PIXI, url) {
       v.emit("talk", n, ref, delta);
       const after = engine.level(n, b.points);
       if (after.index > before) v.emit("level", n, after);
+      const he = engine.heartEventDue(n, b);
+      if (he) v.emit("heart", n, he);
       return { ref, delta, quests: engine.questsFor(n, b, v.minute) };
     };
-    v.gift = (id, item) => {
+    v.gift = (id, item, tags = []) => {
       const n = world.npcs.find((x) => x.id === id);
       if (!n) return null;
       const b = v.bonds[id];
       const before = engine.level(n, b.points).index;
-      const r = engine.gift(n, b, item, v.day);
+      const r = engine.gift(n, b, item, v.day, tags);
       v.emit("gift", n, item, r.kind, r.delta);
       const after = engine.level(n, b.points);
       if (after.index > before) v.emit("level", n, after);
+      const he = engine.heartEventDue(n, b);
+      if (he) v.emit("heart", n, he);
       return r;
     };
+    v.date = () => engine.date(world, v.day);
+    v.weather = () => (world.calendar ? engine.weatherAt(world, v.day, v.minute) : "clear");
+    v.events = (now = false) => (world.calendar ? engine.eventsOn(world, v.day, now ? v.minute : undefined) : []);
+    v.forecast = (days = 7) => engine.forecast(world, v.day, days);
+    v.hearts = (id) => { const n = world.npcs.find((x) => x.id === id); return n ? engine.hearts(n, v.bonds[id].points) : 0; };
+    v.heartEventDue = (id) => { const n = world.npcs.find((x) => x.id === id); return n ? engine.heartEventDue(n, v.bonds[id]) : null; };
+    v.takeHeartEvent = (id) => { const e = v.heartEventDue(id); if (e) engine.markHeartEvent(v.bonds[id], e.id); return e; };
     v.toJSON = () => ({ day: v.day, minute: v.minute, bonds: v.bonds });
     v.load = (d) => { Object.assign(v.bonds, d.bonds ?? {}); v.setTime(d.day ?? 0, d.minute ?? 0); };
     v.refresh();
