@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { DEFAULT_CALENDAR, DEFAULT_CLOCK, findPath, nearestWalkable, placeTile, routeKey, routePairs, toMinutes } from "../shared/engine.js";
+import { DEFAULT_CALENDAR, DEFAULT_CLOCK, DEFAULT_FLOOD, findPath, parseHours, nearestWalkable, placeTile, routeKey, routePairs, toMinutes } from "../shared/engine.js";
 import { CULTURES, FACINGS, FORMAT, WEATHERS, WEEKDAYS, WHEN, type Calendar, type Clock, type Diagnostic, type Name, type Npc, type NpcDoc, type Place, type TileMap, type World } from "../shared/types.js";
+import type { Flood, Lighting, Shop, TransitLine } from "../shared/townlife.js";
 import { assertSafeId, pkgRoot, resolveInside, resolveWorkspace, SAMPLES_DIR } from "./fsx.js";
 
 export { assertSafeId, resolveWorkspace, resolveInside };
@@ -102,6 +103,11 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
   const places: Record<string, Place> = {};
   const activities: Record<string, Name> = {};
   const npcs: Npc[] = [];
+  let lighting: Lighting | undefined;
+  const shops: Record<string, Shop> = {};
+  const lines: TransitLine[] = [];
+  let flood: Flood = structuredClone(DEFAULT_FLOOD);
+  let floodSet = false;
   for (const d of docs) {
     const f = `npcs/${d.id}.easynpc.json`;
     if (d.parseError) {
@@ -141,6 +147,45 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
         for (const k of ["from", "to"] as const) if (ev[k] && Number.isNaN(toMinutes(ev[k]!))) err(`${q}.${k}`, "not HH:MM");
         for (const t of [ev.name?.th, ev.name?.en]) if (t && (SACRED.test(t) || RITUAL.test(t))) err(q, `content rule: festivals stay multicultural and non-ritual (market, harvest, kites, boats) ("${t}")`);
       }
+    }
+    // town life: lighting keyframes, shop hours, transit timetables, flooding
+    if (doc.lighting) {
+      if (!Array.isArray(doc.lighting.keys) || doc.lighting.keys.length < 2) err(`${f}:lighting.keys`, "needs at least two keyframes");
+      for (const [i, k] of (doc.lighting.keys ?? []).entries()) {
+        if (Number.isNaN(toMinutes(k.at ?? ""))) err(`${f}:lighting.keys[${i}].at`, `"${k.at}" is not HH:MM`);
+        if (!/^#[0-9a-fA-F]{6}$/.test(k.tint ?? "")) err(`${f}:lighting.keys[${i}].tint`, "tint must be #rrggbb");
+        for (const q of ["dark", "lamps"] as const) if (!(k[q] >= 0 && k[q] <= 1)) err(`${f}:lighting.keys[${i}].${q}`, "must be between 0 and 1");
+      }
+      lighting = doc.lighting;
+    }
+    for (const [id, sh] of Object.entries(doc.shops ?? {})) {
+      const q = `${f}:shops.${id}`;
+      if (!/^[a-z0-9][a-z0-9_-]*$/.test(id)) err(q, "shop id must match ^[a-z0-9][a-z0-9_-]*$");
+      if (shops[id]) err(q, "duplicate shop");
+      if (!nameOk(sh.name)) err(`${q}.name`, "name needs th and en");
+      if (!parseHours(sh.hours)) err(`${q}.hours`, `"${sh.hours}" is not HH:MM-HH:MM`);
+      if (sh.closedOn?.some((x) => !WEEKDAYS.includes(x))) err(`${q}.closedOn`, `use ${WEEKDAYS.join(", ")}`);
+      if (sh.kind && !["shop", "stall", "counter"].includes(sh.kind)) err(`${q}.kind`, "use shop|stall|counter");
+      shops[id] = sh;
+    }
+    for (const [i, l] of (doc.transit?.lines ?? []).entries()) {
+      const q = `${f}:transit.lines[${i}]${l?.id ? `(${l.id})` : ""}`;
+      if (!/^[a-z0-9][a-z0-9_-]*$/.test(l.id ?? "")) err(q, "id must match ^[a-z0-9][a-z0-9_-]*$");
+      if (lines.some((x) => x.id === l.id)) err(q, "duplicate line id");
+      if (l.kind !== "train" && l.kind !== "flight") err(`${q}.kind`, "use train|flight");
+      if (!nameOk(l.name)) err(`${q}.name`, "name needs th and en");
+      if (!l.from || !l.to || l.from === l.to) err(q, "from and to must be two different stations / airports");
+      if (!Array.isArray(l.departs) || !l.departs.length || l.departs.some((t) => Number.isNaN(toMinutes(t)))) err(`${q}.departs`, "needs HH:MM departure times");
+      if (!(l.minutes > 0)) err(`${q}.minutes`, "travel minutes must be > 0");
+      if (l.days?.some((x) => !WEEKDAYS.includes(x))) err(`${q}.days`, `use ${WEEKDAYS.join(", ")}`);
+      lines.push(l);
+    }
+    if (doc.flood) {
+      floodSet = true;
+      flood = { ...flood, ...doc.flood, rise: { ...flood.rise, ...(doc.flood.rise ?? {}) } };
+      for (const k of Object.keys(doc.flood.rise ?? {})) if (!(WEATHERS as readonly string[]).includes(k)) err(`${f}:flood.rise.${k}`, `use ${WEATHERS.join("|")}`);
+      if (!(flood.drain >= 0 && flood.drain <= 1)) err(`${f}:flood.drain`, "must be between 0 and 1");
+      if (!(Number.isInteger(flood.window) && flood.window >= 1 && flood.window <= 60)) err(`${f}:flood.window`, "integer days 1..60");
     }
     for (const [id, p] of Object.entries(doc.places ?? {})) {
       if (!/^[a-z0-9][a-z0-9_-]*$/.test(id)) err(`${f}:places.${id}`, "place id must match ^[a-z0-9][a-z0-9_-]*$");
@@ -204,6 +249,10 @@ export async function loadWorld(root: string, opts: { routes?: boolean } = {}): 
   // map spawns become places when not defined
   for (const [id, p] of Object.entries(await mapSpawns(root, mapRel))) if (!places[id] && id !== "player") places[id] = p;
   const world: World = { map, clock, places, npcs, activities, calendar };
+  if (floodSet) world.flood = flood;
+  if (lighting) world.lighting = lighting;
+  if (Object.keys(shops).length) world.shops = shops;
+  if (lines.length) world.transit = { lines };
   for (const [id, p] of Object.entries(places)) {
     if (p.x < 0 || p.y < 0 || p.x >= map.width || p.y >= map.height) err(`place ${id}`, `(${p.x},${p.y}) is outside the ${map.width}×${map.height} map`);
     else if (map.collision[p.y]![p.x] === "#") {

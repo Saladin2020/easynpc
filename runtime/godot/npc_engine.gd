@@ -498,3 +498,183 @@ static func weather_at(world: Dictionary, day: int, minute: float) -> String:
 	var w := weather_on(world, day)
 	var m := (int(floor(minute)) % 1440 + 1440) % 1440
 	return "cloudy" if w == "fog" and m >= FOG_LIFTS else w
+
+
+# ------------------------------------------------------------------ town life (parity with townlife.ts)
+const LIGHT_PHASES := ["late_night", "dawn", "morning", "noon", "afternoon", "sunset", "evening", "night"]
+const PHASE_FROM := {"late_night": "23:00", "dawn": "05:00", "morning": "06:30", "noon": "11:00", "afternoon": "14:00", "sunset": "17:00", "evening": "18:30", "night": "20:00"}
+const DEFAULT_LIGHT_KEYS := [
+	{"at": "00:00", "tint": "#46508c", "dark": 0.6, "lamps": 1.0}, {"at": "04:30", "tint": "#46508c", "dark": 0.6, "lamps": 1.0},
+	{"at": "05:30", "tint": "#9078aa", "dark": 0.42, "lamps": 0.8}, {"at": "06:30", "tint": "#ffb08c", "dark": 0.18, "lamps": 0.3},
+	{"at": "07:30", "tint": "#ffe2c4", "dark": 0.04, "lamps": 0.0}, {"at": "10:00", "tint": "#fff6e8", "dark": 0.0, "lamps": 0.0},
+	{"at": "12:00", "tint": "#ffffff", "dark": 0.0, "lamps": 0.0}, {"at": "15:00", "tint": "#fff4dc", "dark": 0.0, "lamps": 0.0},
+	{"at": "17:15", "tint": "#ffbe82", "dark": 0.08, "lamps": 0.1}, {"at": "18:15", "tint": "#fa8c64", "dark": 0.2, "lamps": 0.5},
+	{"at": "19:00", "tint": "#aa6ea0", "dark": 0.36, "lamps": 0.9}, {"at": "20:30", "tint": "#6064b4", "dark": 0.52, "lamps": 1.0},
+	{"at": "23:00", "tint": "#464e96", "dark": 0.6, "lamps": 1.0},
+]
+const DEFAULT_FLOOD := {"rise": {"rain": 0.22, "storm": 0.45}, "drain": 0.18, "window": 8}
+const FLOOD_STAGES := ["dry", "puddles", "ankle", "knee", "waist"]
+const FLOOD_AT := {"dry": 0.0, "puddles": 0.15, "ankle": 0.35, "knee": 0.6, "waist": 0.85}
+const FLOOD_WALK := {"dry": 1.0, "puddles": 0.95, "ankle": 0.8, "knee": 0.6, "waist": 0.45}
+
+
+static func _wrap(minute: float) -> int:
+	return (int(floor(minute)) % 1440 + 1440) % 1440
+
+
+static func _r3(v: float) -> float:
+	return floor(v * 1000.0 + 0.5) / 1000.0
+
+
+static func fmt_hhmm(minute: float) -> String:
+	var m := _wrap(minute)
+	return "%02d:%02d" % [m / 60, m % 60]
+
+
+static func phase_at(minute: float) -> String:
+	var m := _wrap(minute)
+	var best := "late_night"
+	var best_at := -1
+	for p in LIGHT_PHASES:
+		var a := to_minutes(PHASE_FROM[p])
+		if a <= m and a > best_at:
+			best = p
+			best_at = a
+	return best
+
+
+static func lighting(world: Dictionary, minute: float) -> Dictionary:
+	var src: Array = world.lighting.keys if world.get("lighting") != null else DEFAULT_LIGHT_KEYS
+	var keys: Array = []
+	for k in src:
+		var km := to_minutes(k.at)
+		if km >= 0:
+			keys.append({"m": km, "tint": Color.html(k.tint), "dark": float(k.dark), "lamps": float(k.lamps)})
+	keys.sort_custom(func(x, y): return x.m < y.m)
+	var m: float = minute - floor(minute / 1440.0) * 1440.0
+	var a: Dictionary = keys[keys.size() - 1]
+	var b: Dictionary = keys[0]
+	var am: float = a.m - 1440
+	var bm: float = b.m
+	for i in keys.size():
+		if keys[i].m <= m:
+			a = keys[i]
+			am = a.m
+			b = keys[(i + 1) % keys.size()]
+			bm = b.m if i + 1 < keys.size() else b.m + 1440
+	var span := bm - am
+	var raw := (m - am) / span if span > 0 else 0.0
+	var t := raw * raw * (3.0 - 2.0 * raw)
+	var ca := [a.tint.r8, a.tint.g8, a.tint.b8]
+	var cb := [b.tint.r8, b.tint.g8, b.tint.b8]
+	var tint := []
+	for i in 3:
+		tint.append(int(floor(ca[i] + (cb[i] - ca[i]) * t + 0.5)))
+	return {"phase": phase_at(minute), "tint": tint, "tintHex": (tint[0] << 16) | (tint[1] << 8) | tint[2], "dark": _r3(a.dark + (b.dark - a.dark) * t), "lamps": _r3(a.lamps + (b.lamps - a.lamps) * t)}
+
+
+static func parse_hours(h: String) -> Array:
+	var parts := h.replace(" ", "").split("-")
+	if parts.size() != 2:
+		return []
+	var a := to_minutes(parts[0])
+	var b := to_minutes(parts[1])
+	return [] if a < 0 or b < 0 else [a, b]
+
+
+static func shop_status(world: Dictionary, id: String, day: int, minute: float, flood := 0.0) -> Dictionary:
+	var shops: Dictionary = world.get("shops", {}) if world.get("shops") != null else {}
+	var s = shops.get(id)
+	var hrs: Array = parse_hours(String(s.hours)) if s != null else []
+	if s == null or hrs.is_empty():
+		return {"open": false, "reason": "unknown", "opensAt": null, "closesAt": null}
+	var a: int = hrs[0]
+	var b: int = hrs[1]
+	var m := _wrap(minute)
+	var in_hours: bool = (m >= a and m < b) if a < b else (m >= a or m < b)
+	var opens := fmt_hhmm(a)
+	var closes := fmt_hhmm(b)
+	if s.get("closedOn") != null and (s.closedOn as Array).has(date(world, day).weekday):
+		return {"open": false, "reason": "closed_day", "opensAt": opens, "closesAt": closes}
+	if s.get("event") != null:
+		var found := false
+		for e in events_on(world, day):
+			if e.id == s.event:
+				found = true
+		if not found:
+			return {"open": false, "reason": "event", "opensAt": opens, "closesAt": closes}
+	var close_at: float = float(s.floodClose) if s.get("floodClose") != null else (0.35 if s.get("kind") == "stall" else 0.6)
+	if flood >= close_at:
+		return {"open": false, "reason": "flood", "opensAt": opens, "closesAt": closes}
+	return {"open": in_hours, "reason": "open" if in_hours else "hours", "opensAt": opens, "closesAt": closes}
+
+
+static func disruption(kind: String, w: String, flood: float) -> Dictionary:
+	if kind == "train":
+		if flood >= 0.85:
+			return {"delay": 0, "cancelled": true}
+		return {"delay": 30 if flood >= 0.6 else (10 if flood >= 0.35 else 0), "cancelled": false}
+	return {"delay": 45 if w == "storm" else (20 if w == "fog" else 0), "cancelled": false}
+
+
+static func departures(world: Dictionary, station: String, day: int, minute: float, kind := "", n := 8) -> Array:
+	var out: Array = []
+	var now: float = day * 1440 + minute
+	var lines: Array = world.transit.lines if world.get("transit") != null else []
+	for d in [day, day + 1]:
+		var wd: String = date(world, d).weekday
+		var fl := flood_level(world, d)
+		var we := weather_on(world, d) if world.get("calendar") != null else "clear"
+		for l in lines:
+			if l.from != station or (kind != "" and l.kind != kind) or (l.get("days") != null and not (l.days as Array).has(wd)):
+				continue
+			var dis := disruption(l.kind, we, fl)
+			for t in l.departs:
+				var base := to_minutes(t)
+				if base < 0:
+					continue
+				var at: int = d * 1440 + base + int(dis.delay)
+				if at < now:
+					continue
+				var board: int = int(l.board) if l.get("board") != null else 15
+				var status := "cancelled" if dis.cancelled else ("boarding" if now >= at - board else ("delayed" if int(dis.delay) > 0 else "scheduled"))
+				out.append({"line": l.id, "kind": l.kind, "from": l.from, "to": l.to, "day": d, "depart": fmt_hhmm(base), "at": at, "arrive": at + int(l.minutes), "delay": int(dis.delay), "status": status, "fare": int(l.fare) if l.get("fare") != null else 0})
+	out.sort_custom(func(x, y): return x.at < y.at or (x.at == y.at and String(x.line) < String(y.line)))
+	return out.slice(0, n)
+
+
+static func service_at(world: Dictionary, station: String, day: int, minute: float, kind := "") -> Variant:
+	for d in departures(world, station, day, minute, kind, 4):
+		if d.status == "boarding":
+			return d
+	return null
+
+
+static func _flood_after(world: Dictionary, day: int) -> float:
+	if world.get("calendar") == null or day < 0:
+		return 0.0
+	var f: Dictionary = world.flood if world.get("flood") != null else DEFAULT_FLOOD
+	var level := 0.0
+	for d in range(max(0, day - int(f.window) + 1), day + 1):
+		level = min(1.0, max(0.0, level - float(f.drain)) + float(f.rise.get(weather_on(world, d), 0.0)))
+	return level
+
+
+static func flood_level(world: Dictionary, day: int, minute := 1440.0) -> float:
+	var prev := _flood_after(world, day - 1)
+	var cur := _flood_after(world, day)
+	var t: float = min(1.0, max(0.0, minute / 720.0))
+	return _r3(prev + (cur - prev) * t)
+
+
+static func flood_stage(level: float) -> String:
+	var s := "dry"
+	for k in FLOOD_STAGES:
+		if level >= FLOOD_AT[k]:
+			s = k
+	return s
+
+
+static func flood_effects(level: float) -> Dictionary:
+	var stage := flood_stage(level)
+	return {"stage": stage, "walk": FLOOD_WALK[stage], "npcsIndoors": level >= 0.6, "stallsClosed": level >= 0.35, "trainsCancelled": level >= 0.85}

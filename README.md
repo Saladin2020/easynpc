@@ -240,3 +240,20 @@ workflow (CLI · web editor · MCP server) and the same targets (**Godot 4.3+** 
 
 Map rendered with Easy Tilemap; character sheets from Easy Sprite (CC0). Kanit font: SIL OFL 1.1. See
 [CREDITS.md](CREDITS.md). Code: MIT.
+
+## Town life (lighting, shop hours, timetables, flooding)
+
+An `npcs/*.easynpc.json` document can add (sample: `samples/npcs/town_life.easynpc.json`):
+
+- `lighting.keys` — time-of-day keyframes (`at`, `tint` #rrggbb, `dark`, `lamps`), blended smoothly through
+  dawn, morning, noon, afternoon, sunset, evening, night and late night (defaults built in).
+- `shops` — `hours` (`"07:00-19:30"`, overnight allowed), `closedOn` weekdays, `event` (a ตลาดนัด stall that only
+  opens on market day), `kind` shop / stall / counter, `halal`, `floodClose`.
+- `transit.lines` — train / flight timetables (`from`, `to`, `departs`, `minutes`, `board`, `fare`, `days`).
+  Storms delay flights, floods delay or cancel trains.
+- `flood` — level rises after rain / storm days and drains on dry ones (`rise`, `drain`, `window`);
+  stages dry → puddles → ankle → knee → waist slow walking, close stalls and send NPCs indoors.
+
+`easynpc town --day 5 --at 07:50` prints it; MCP `town_life`; Pixi `view.light()`, `view.shop(id)`,
+`view.departures(station)`, `view.flood()` (+ `phase` / `flood` / `shop` events); Godot `NPCs.light()`,
+`NPCs.shop(id)`, `NPCs.departures(station)`, `NPCs.flood()` (+ `phase_changed` / `flood_changed`).

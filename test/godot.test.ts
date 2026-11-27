@@ -28,6 +28,7 @@ describe.skipIf(!GODOT)("Godot export", () => {
     expect(run.stdout).toMatch(/^P\|paths 24$/m);
     expect(run.stdout).toMatch(/^B\|bonds 4$/m);
     expect(run.stdout).toMatch(/^C\|calendar days 67$/m);
+    expect(run.stdout).toMatch(/^T\|town light 85 shops [1-9]\d+ deps [1-9]\d* floods 180$/m);
     expect(run.stdout).toMatch(/^OK$/m);
   }, 900_000);
 });

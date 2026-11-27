@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { date, eventsOn, findPath, gift, hash01, heartEventDue, hearts, markHeartEvent, newBond, routeKey, state, talk, level, questsFor, walkable, weatherAt, weatherOn } from "../shared/engine.js";
+import { date, departures, eventsOn, floodEffects, floodLevel, lighting, shopStatus, findPath, gift, hash01, heartEventDue, hearts, markHeartEvent, newBond, routeKey, state, talk, level, questsFor, walkable, weatherAt, weatherOn } from "../shared/engine.js";
 import { mulberry32 } from "../shared/rng.js";
 import { EXPORT_PRESETS, type ExportPreset, type World } from "../shared/types.js";
 import { FONT_DIR, resolveInside, RUNTIME_DIR, Writer } from "./fsx.js";
@@ -88,7 +88,17 @@ export function parityData(world: World) {
     log.push(["refuse", gift(npc, newBond(npc), "x", 0, ["pork"]).kind]);
     return { id: npc.id, log };
   });
-  return { states, paths, bonds, routes: Object.keys(world.routes ?? {}).length, days, hashes, hearts: heartsLog };
+  // town life: lighting, shop hours, timetables, flooding
+  const light = [];
+  for (let m = 0; m < 1440; m += 17) light.push({ minute: m, ...lighting(world, m) });
+  const shopRows = [];
+  for (const id of Object.keys(world.shops ?? {})) for (const day of [0, 5, 12]) for (const m of [300, 420, 700, 1000, 1290]) for (const fl of [0, 0.4, 0.7]) shopRows.push({ id, day, minute: m, flood: fl, ...shopStatus(world, id, day, m, fl) });
+  const stations = [...new Set((world.transit?.lines ?? []).map((l) => l.from))];
+  const deps = [];
+  for (const st of stations) for (const day of [0, 3, 40]) for (const m of [0, 400, 700, 1300]) deps.push({ station: st, day, minute: m, list: departures(world, st, day, m, { n: 5 }) });
+  const floods = [];
+  for (let d = 0; d < 120; d += 2) for (const m of [0, 360, 1440]) { const lv = floodLevel(world, d, m); floods.push({ day: d, minute: m, level: lv, stage: floodEffects(lv).stage }); }
+  return { states, paths, bonds, routes: Object.keys(world.routes ?? {}).length, days, hashes, hearts: heartsLog, town: { light, shops: shopRows, deps, floods } };
 }
 
 export async function exportNpcs(root: string, opts: ExportOptions = {}): Promise<ExportResult> {

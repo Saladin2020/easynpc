@@ -1,3 +1,4 @@
+import type { Flood, Lighting, Shop, Transit } from "./townlife.js";
 export const FORMAT = "easynpc/1";
 export const EXPORT_PRESETS = ["godot", "pixi", "png", "json", "all"] as const;
 export type ExportPreset = (typeof EXPORT_PRESETS)[number];
@@ -168,6 +169,10 @@ export interface NpcDoc {
   npcs?: Npc[];
   /** Days, seasons, years, date events and daily weather (defaults: 3 Thai seasons × 28 days). */
   calendar?: Partial<Calendar>;
+  lighting?: Lighting;
+  shops?: Record<string, Shop>;
+  transit?: Transit;
+  flood?: Partial<Flood>;
 }
 
 export interface TileMap {
@@ -188,6 +193,11 @@ export interface World {
   calendar?: Calendar;
   /** "from>to" → tile path (precomputed by the CLI, A* fallback at runtime). */
   routes?: Record<string, Array<[number, number]>>;
+  /** Town life: lighting keyframes, shop hours, train / flight timetables, flooding. */
+  lighting?: Lighting;
+  shops?: Record<string, Shop>;
+  transit?: Transit;
+  flood?: Flood;
 }
 
 export interface Diagnostic {

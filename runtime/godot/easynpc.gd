@@ -15,6 +15,8 @@ signal level_up(id: String, level: Dictionary)
 signal day_changed(day: int, date: Dictionary, weather: String, events: Array)
 signal weather_changed(weather: String)
 signal heart_event(id: String, event: Dictionary)
+signal phase_changed(phase: String, light: Dictionary)
+signal flood_changed(level: float, stage: String)
 
 const Engine2 := preload("res://easynpc/npc_engine.gd")
 
@@ -32,6 +34,10 @@ var _last_night := false
 var _moving := {}
 var _last_day := -999999
 var _last_weather := ""
+var _last_phase := ""
+var _last_flood_stage := ""
+## null = follow the calendar; a number 0..1 forces the flood level (events, debug).
+var forced_flood = null
 
 
 func _ready() -> void:
@@ -77,6 +83,14 @@ func set_time(d: int, m: float) -> void:
 		if w != _last_weather:
 			_last_weather = w
 			weather_changed.emit(w)
+	var ph := Engine2.phase_at(minute)
+	if ph != _last_phase:
+		_last_phase = ph
+		phase_changed.emit(ph, light())
+	var fs: String = Engine2.flood_stage(flood())
+	if fs != _last_flood_stage:
+		_last_flood_stage = fs
+		flood_changed.emit(flood(), fs)
 	var n := is_night()
 	if n != _last_night:
 		_last_night = n
@@ -241,3 +255,35 @@ func from_dict(d: Dictionary) -> void:
 		bonds[k] = d.bonds[k]
 	forced_night = d.get("forced_night")
 	set_time(int(d.get("day", 0)), float(d.get("minute", 420)))
+
+
+# ------------------------------------------------------------------ town life
+## {phase, tint [r,g,b], tintHex, dark, lamps} — blend a CanvasModulate / overlay with it every frame.
+func light() -> Dictionary:
+	return Engine2.lighting(world, minute)
+
+
+func phase() -> String:
+	return Engine2.phase_at(minute)
+
+
+func flood() -> float:
+	if forced_flood != null:
+		return float(forced_flood)
+	return Engine2.flood_level(world, day, minute) if world.has("calendar") else 0.0
+
+
+func flood_effects() -> Dictionary:
+	return Engine2.flood_effects(flood())
+
+
+func shop(id: String) -> Dictionary:
+	return Engine2.shop_status(world, id, day, minute, flood())
+
+
+func departures(station: String, kind := "", n := 6) -> Array:
+	return Engine2.departures(world, station, day, minute, kind, n)
+
+
+func service_at(station: String, kind := "") -> Variant:
+	return Engine2.service_at(world, station, day, minute, kind)

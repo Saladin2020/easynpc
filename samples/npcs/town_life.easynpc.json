@@ -1,0 +1,23 @@
+{
+  "format": "easynpc/1",
+  "id": "town_life",
+  "shops": {
+    "heng_shop": { "name": { "th": "ร้านโชห่วยอาแปะเฮง", "en": "A-Pae Heng's general store", "ms": "Kedai runcit A-Pae Heng" }, "hours": "07:00-19:30", "kind": "shop" },
+    "halal_stall": { "name": { "th": "แผงอาหารฮาลาลก๊ะอาอีซะห์", "en": "Kak Aisyah's halal stall", "ms": "Gerai halal Kak Aisyah" }, "hours": "06:30-14:00", "kind": "stall", "halal": true },
+    "market_stall": { "name": { "th": "แผงตลาดนัดผักผลไม้", "en": "Market-day fruit & veg stall", "ms": "Gerai pasar sayur dan buah" }, "hours": "07:00-13:00", "kind": "stall", "event": "market_day", "halal": true },
+    "noodle_shop": { "name": { "th": "ร้านก๋วยเตี๋ยวเรือ", "en": "Boat-noodle shop", "ms": "Kedai mi bot" }, "hours": "10:00-21:00", "kind": "shop", "closedOn": ["wed"] },
+    "station_counter": { "name": { "th": "ช่องขายตั๋วรถไฟ", "en": "Train ticket counter", "ms": "Kaunter tiket kereta api" }, "hours": "05:30-21:30", "kind": "counter" },
+    "airport_counter": { "name": { "th": "เคาน์เตอร์เช็กอินสนามบิน", "en": "Airport check-in counter", "ms": "Kaunter daftar masuk lapangan terbang" }, "hours": "05:00-22:00", "kind": "counter", "floodClose": 0.95 }
+  },
+  "transit": {
+    "lines": [
+      { "id": "sh_bnd", "kind": "train", "name": { "th": "รถไฟ ซินเฮง → บ้านนาดี", "en": "Sin Heng → Ban Na Di", "ms": "Sin Heng → Ban Na Di" }, "from": "talat_sin_heng", "to": "ban_na_di", "departs": ["06:10", "08:40", "11:10", "13:40", "16:10", "18:40"], "minutes": 40, "fare": 20 },
+      { "id": "bnd_sh", "kind": "train", "name": { "th": "รถไฟ บ้านนาดี → ซินเฮง", "en": "Ban Na Di → Sin Heng", "ms": "Ban Na Di → Sin Heng" }, "from": "ban_na_di", "to": "talat_sin_heng", "departs": ["07:00", "09:30", "12:00", "14:30", "17:00", "19:30"], "minutes": 40, "fare": 20 },
+      { "id": "bnd_kb", "kind": "train", "name": { "th": "รถไฟ บ้านนาดี → กำปงบุหงา", "en": "Ban Na Di → Kampung Bunga", "ms": "Ban Na Di → Kampung Bunga" }, "from": "ban_na_di", "to": "kampung_bunga", "departs": ["06:30", "10:00", "13:30", "17:30"], "minutes": 55, "fare": 25 },
+      { "id": "kb_bnd", "kind": "train", "name": { "th": "รถไฟ กำปงบุหงา → บ้านนาดี", "en": "Kampung Bunga → Ban Na Di", "ms": "Kampung Bunga → Ban Na Di" }, "from": "kampung_bunga", "to": "ban_na_di", "departs": ["08:00", "11:30", "15:00", "19:00"], "minutes": 55, "fare": 25 },
+      { "id": "fl_sh_kb", "kind": "flight", "name": { "th": "เที่ยวบิน ซินเฮง → กำปงบุหงา", "en": "Flight Sin Heng → Kampung Bunga", "ms": "Penerbangan Sin Heng → Kampung Bunga" }, "from": "apt_sin_heng", "to": "apt_bunga", "departs": ["07:30", "12:30", "17:30"], "minutes": 35, "board": 25, "fare": 120 },
+      { "id": "fl_kb_sh", "kind": "flight", "name": { "th": "เที่ยวบิน กำปงบุหงา → ซินเฮง", "en": "Flight Kampung Bunga → Sin Heng", "ms": "Penerbangan Kampung Bunga → Sin Heng" }, "from": "apt_bunga", "to": "apt_sin_heng", "departs": ["09:30", "14:30", "19:30"], "minutes": 35, "board": 25, "fare": 120 }
+    ]
+  },
+  "flood": { "rise": { "rain": 0.22, "storm": 0.45 }, "drain": 0.18, "window": 8 }
+}
